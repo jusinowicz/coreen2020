@@ -1,3 +1,13 @@
+#=============================================================================
+#File 1: Use nlme to fit random effects, AR models of population growth
+#=============================================================================
+# Use nlme to fit an AR model to each treatment time series. 
+# Temporal autocorrelation is treated using corARMA correlation structure. 
+# Mesocosm is a random effect. 
+# First, loop over both diaphanosoma and daphnia when diaphanasoma is the 
+# invader
+# Second, loop over both diaphanosoma and daphnia when daphnia is the invader
+#=============================================================================
 
 #=============================================================================
 #Load libraries
@@ -42,14 +52,6 @@ ntreatments =  length(unique(m1_data_long$temperature))
 treats = unique(m1_data_long$mesocosm.ID)
 invader = unique(m1_data_long$species)
 invasions_per = length(treats)/4 #Treatment entries correponding to each spp 
-#=============================================================================
-# Use nlme to fit an AR model to each treatment time series. 
-# Temporal autocorrelation is treated using corARMA correlation structure. 
-# Mesocosm is a random effect. 
-# First, loop over both diaphanosoma and daphnia when diaphanasoma is the 
-# invader
-# Second, loop over both diaphanosoma and daphnia when daphnia is the invader
-#=============================================================================
 
 #=============================================================================
 # First, loop over both diaphanosoma and daphnia when diaphanasoma is the 
