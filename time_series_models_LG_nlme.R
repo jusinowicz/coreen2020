@@ -139,25 +139,29 @@ for (i in 1:2) {
 		# any fixed or random effects to be properly accounted for, in either fitting or
 		# errors. 
 		#================================================================================
+		rep_use = 6 #Change this in order to pull data from a specific replicate
 		###Resident
 		#Pull out one replicate AND only use the N that are pre-invasion: 
 		#Note, if you use data that are post invasion to fit the single-species resident 
 		#model, LG_1sp, then alpha_ii will take on weird values. 
-		mydata1 = subset(res_data,replicate.number==6 & day_n < (inv_day+12) )
+		#Choose 1: 
+		#mydata1 = subset(res_data,replicate.number==rep_use & day_n < (inv_day+12) )
+		mydata1 = subset(res_data, day_n < (inv_day+12) )
+
 		m1=nls(LG_res, data = mydata1, start=list(lambda = 1.1, alpha_ii=0.5) )
 		#Model parameters: 
 		lam1 =  m1$m$getPars()[1]
 		aii =  m1$m$getPars()[2]
-		p1 = ( lam1/(1+aii*mydata1$N)+0.5 )
+		p1 = ( lam1/(1+aii*mydata1$N_res)+0.5 )
 		#p1=predict(m1, data = mydata1) #Same thing
 		
 		#To shift things back to the population scale ( we're fitting the growth
 		#rate function and not population counts directly)
 		#Note, this should be exactly the same as N_res in res_data: 
-		actN_res = mydata1$Ndiff_res*(mydata1$N)
+		actN_res = mydata1$Ndiff_res*(mydata1$N_res)
 		#To get the predicted N_res, multiply the NLS fit of our G by N: 
-		predN_res = p1*(mydata1$N )
-		predN_res2 = p1*(subset(res_data,replicate.number==6)$N )
+		predN_res = p1*(mydata1$N_res )
+		predN_res2 = p1*(subset(res_data,replicate.number==rep_use)$N_res)
 
 		#Basic plots of data and fits: 
 		par(mfrow = c(2,1))
@@ -166,40 +170,43 @@ for (i in 1:2) {
 			ylab = "Resident density" )
 		points(predN_res,col="blue")
 		#Second, over full time series
-		plot(subset(res_data,replicate.number==6)$N , ylim = c(0,max( subset(res_data,replicate.number==6)$N ,
+		plot(subset(res_data,replicate.number==rep_use)$N_res , ylim = c(0,max( subset(res_data,replicate.number==rep_use)$N_res,
 			na.rm=T ) ), xlab = "Time",	ylab = "Resident density" )
 		points(predN_res2, col ="blue")
 
 		###Invader
 		#Pull out one replicate AND only use the N that are post-invasion but pre invader
 		#equilibrium (this is very subjective, but also tends to be fairly robust) : 
+		#Choose 1: 
 		#mydata1 = subset(inv_data,replicate.number==6 & day_n > inv_day & day_n < (day_n+15) )
-		mydata1 = subset(inv_data,replicate.number==6 & day_n > inv_day  )
-		m1=nls(LG_inv, data = mydata1, start=list(lambda = 1.1, alpha_ij=0.5) )
+		#mydata1 = subset(inv_data,replicate.number==rep_use & day_n >= inv_day  )
+		mydata1 = subset(inv_data, day_n >= inv_day  )
+
+		m1=nls(LG_inv, data = mydata1, start=list(lambda = 1.1, alpha_ij=0.1) )
 		#Model parameters: 
 		lam1 =  m1$m$getPars()[1]
-		aii =  m1$m$getPars()[2]
-		p1 = ( lam1/(1+aii*mydata1$N)+0.5 )
+		aij =  m1$m$getPars()[2]
+		p1 = ( lam1/(1+aij*mydata1$N_res)+0.5 )
 		#p1=predict(m1, data = mydata1) #Same thing
 		
 		#To shift things back to the population scale ( we're fitting the growth
 		#rate function and not population counts directly)
 		#Note, this should be exactly the same as N_res in res_data: 
-		actN_res = mydata1$Ndiff_res*(mydata1$N)
+		actN_inv = mydata1$Ndiff_inv*(mydata1$N_inv)
 		#To get the predicted N_res, multiply the NLS fit of our G by N: 
-		predN_res = p1*(mydata1$N )
-		predN_res2 = p1*(subset(res_data,replicate.number==6)$N )
+		predN_inv = p1*(mydata1$N_inv )
+		predN_inv2 = p1*(subset(inv_data,replicate.number==rep_use)$N_inv)
 
 		#Basic plots of data and fits: 
 		par(mfrow = c(2,1))
 		#First plot
-		plot(actN_res, ylim = c(0,max( c( actN_res,predN_res ),na.rm=T ) ),xlab = "Time",
-			ylab = "Resident density" )
-		points(predN_res,col="blue")
+		plot(actN_inv, ylim = c(0,max( c( actN_inv,predN_inv ),na.rm=T ) ),xlab = "Time",
+			ylab = "Invader density" )
+		points(predN_inv,col="blue")
 		#Second, over full time series
-		plot(subset(res_data,replicate.number==6)$N , ylim = c(0,max( subset(res_data,replicate.number==6)$N ,
-			na.rm=T ) ), xlab = "Time",	ylab = "Resident density" )
-		points(predN_res2, col ="blue")
+		plot(subset(inv_data,replicate.number==rep_use)$N_inv, ylim = c(0,max( subset(inv_data,replicate.number==rep_use)$N_inv ,
+			na.rm=T ) ), xlab = "Time",	ylab = "Invader density" )
+		points(predN_inv2, col ="blue")
 
 
 		#================================================================================
