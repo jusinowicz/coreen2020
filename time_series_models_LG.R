@@ -60,19 +60,31 @@ ntreatments =  length(unique(m1_data_long$temperature))
 treats = unique(m1_data_long$mesocosm.ID)
 invader = unique(m1_data_long$species)
 invasions_per = length(treats)/4 #Treatment entries correponding to each spp 
+inv_day = 28 #The first day of attempted invasion
+no_reps = 18 #The number of replicated mesocosms total per resident/invader
+
+#=============================================================================
+#Define the growth rate functions for the LG population model(s)
+#=============================================================================
+#The model for the resident with only the resident species
+LG_res = formula (Ndiff_res ~ lambda/(1+alpha_ii*N_res) + 0.5)
+#The model for the invader with only the invader species
+LG_inv = formula (Ndiff_inv ~ lambda/(1+alpha_ij*N_res) + 0.5)
+#The model with both species (this tends to have convergence problems)
+LG_2sp = formula (Ndiff_inv ~ lambda/(1+alpha_ii*N_inv+alpha_ij*N_res)+0.5)
 
 #=============================================================================
 # First, loop over both diaphanosoma and daphnia when diaphanasoma is the 
 # invader
 #=============================================================================
-
 all_models_dia_invade = vector( "list", ntreatments*2) #To store all of the fitted models
 model_fit_dia_invade = vector( "list", ntreatments*2) #The predicted IGR based on the fitted LME 
 
 #Loop over both diaphanosoma and daphnia when diaphanasoma is the invader
 for (i in 1:2) {  
 	#Loop over treatments 
-	u_invader = invader[i]
+	u_invader = invader[-i]
+	u_res = invader[i]
 
 	for (n in 1: (ntreatments)){
 		#Since the treatments are regular, set the start/end position of
@@ -81,29 +93,119 @@ for (i in 1:2) {
 		pos2 = pos1+2
 		u_treats = treats[pos1:pos2]
 		index1 = n+(i-1)*ntreatments
+
+		#=============================================================================
+		#Make new resident and invader data sets.
+		#=============================================================================
+		#Make a new resident data set to fit the growth rate function with nlme/nls 
+		#The new data set includes a column for n(t+1)/n(t) and a columnf for the time 
+		#interval across subsequent measurements.  
+		res_tmp = subset(m1_data_long, mesocosm.ID == u_treats &  species == u_res   )
+        res_tmp = na.exclude(res_tmp) #NLME won't work with NAs 
+       	#Arrange the data by replicate number, then add a new column for the delta N
+        res_tmp = res_tmp %>% 
+        		arrange(replicate.number) %>%
+       			mutate(Ndiff_res = lead( N/lag(N),)) #"lead" lines up the result 
+		res_tmp$Ndiff_res[res_tmp$day_n == max(res_tmp$day_n )] =NA #Remove last day
+		res_tmp = res_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step
+		res_tmp = res_tmp %>% mutate(N_res = N)
+        res_tmp$tdiff[res_tmp$tdiff<0] = NA #Remove negative time steps
+		#Make this a grouped data object:
+		res_data = groupedData(Ndiff_res~N_res+day_n|replicate.number, data = res_tmp)
+	
+		#Make a new invader data set to fit the growth rate function with nlme/nls 
+		#The new data set includes a column for n(t+1)/n(t) and a columnf for the time 
+		#interval across subsequent measurements.  
+		inv_tmp = subset(m1_data_long, mesocosm.ID == u_treats &  species == u_invader   )
+        inv_tmp = na.exclude(inv_tmp) #NLME won't work with NAs 
+       	#Arrange the data by replicate number, then add a new column for the delta N
+        inv_tmp = inv_tmp %>% 
+        		arrange(replicate.number) %>%
+       			mutate(Ndiff_inv = lead( N/lag(N),)) #"lead" lines up the result 
+		inv_tmp$Ndiff_inv[inv_tmp$day_n == max(inv_tmp$day_n )] =NA #Remove last day
+		inv_tmp = inv_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step
+		inv_tmp = inv_tmp %>% mutate(N_inv = N)
+		#This line adds the resident densities on the matching days from the matching 
+		#replicates to the data table inv_tmp
+		inv_tmp = inv_tmp %>% left_join( select( res_tmp, replicate.number,day_n,N_res),
+		 by= (c( "day_n" = "day_n", "replicate.number"="replicate.number" )) )
+        inv_tmp$tdiff[inv_tmp$tdiff<0] = NA #Remove negative time steps
+		#Make this a grouped data object:
+		inv_data = groupedData(Ndiff_inv~N_res+N_inv+day_n|replicate.number, data = inv_tmp)
+	
 		#================================================================================
-		#The LME approach: simple but wrong
+		# Use NLS to test basic model assumptions and convergence, fine-tune fits, etc.
+		# This is essentially what is nested within NLME, it just does not allow for 
+		# any fixed or random effects to be properly accounted for, in either fitting or
+		# errors. 
 		#================================================================================
-		# #Parse out the subset of 3 mesocosms based on the invader ID and Temp combo
-		# mydata = subset(m1_data_long, mesocosm.ID == u_treats &  species == u_invader  )
-		# #Use LME to fit an AR(1) model with replicate number as a random effect
-		# all_models[n] = list (nlme(N ~ day_n, random= ~ 1|replicate.number, 
-		# 	correlation=corARMA(0.2, form=~day_n, p=1, q=0), na.action=na.omit, data=mydata))
-		# #Now use the fitted LME to predict the average across all 3 mesocosms
-		# model_fit[,n] = predict(all_models[[n]],mydata)
+		###Resident
+		#Pull out one replicate AND only use the N that are pre-invasion: 
+		#Note, if you use data that are post invasion to fit the single-species resident 
+		#model, LG_1sp, then alpha_ii will take on weird values. 
+		mydata1 = subset(res_data,replicate.number==6 & day_n < (inv_day+12) )
+		m1=nls(LG_res, data = mydata1, start=list(lambda = 1.1, alpha_ii=0.5) )
+		#Model parameters: 
+		lam1 =  m1$m$getPars()[1]
+		aii =  m1$m$getPars()[2]
+		p1 = ( lam1/(1+aii*mydata1$N)+0.5 )
+		#p1=predict(m1, data = mydata1) #Same thing
+		
+		#To shift things back to the population scale ( we're fitting the growth
+		#rate function and not population counts directly)
+		#Note, this should be exactly the same as N_res in res_data: 
+		actN_res = mydata1$Ndiff_res*(mydata1$N)
+		#To get the predicted N_res, multiply the NLS fit of our G by N: 
+		predN_res = p1*(mydata1$N )
+		predN_res2 = p1*(subset(res_data,replicate.number==6)$N )
+
+		#Basic plots of data and fits: 
+		par(mfrow = c(2,1))
+		#First plot
+		plot(actN_res, ylim = c(0,max( c( actN_res,predN_res ),na.rm=T ) ),xlab = "Time",
+			ylab = "Resident density" )
+		points(predN_res,col="blue")
+		#Second, over full time series
+		plot(subset(res_data,replicate.number==6)$N , ylim = c(0,max( subset(res_data,replicate.number==6)$N ,
+			na.rm=T ) ), xlab = "Time",	ylab = "Resident density" )
+		points(predN_res2, col ="blue")
+
+		###Invader
+		#Pull out one replicate AND only use the N that are post-invasion but pre invader
+		#equilibrium (this is very subjective, but also tends to be fairly robust) : 
+		#mydata1 = subset(inv_data,replicate.number==6 & day_n > inv_day & day_n < (day_n+15) )
+		mydata1 = subset(inv_data,replicate.number==6 & day_n > inv_day  )
+		m1=nls(LG_inv, data = mydata1, start=list(lambda = 1.1, alpha_ij=0.5) )
+		#Model parameters: 
+		lam1 =  m1$m$getPars()[1]
+		aii =  m1$m$getPars()[2]
+		p1 = ( lam1/(1+aii*mydata1$N)+0.5 )
+		#p1=predict(m1, data = mydata1) #Same thing
+		
+		#To shift things back to the population scale ( we're fitting the growth
+		#rate function and not population counts directly)
+		#Note, this should be exactly the same as N_res in res_data: 
+		actN_res = mydata1$Ndiff_res*(mydata1$N)
+		#To get the predicted N_res, multiply the NLS fit of our G by N: 
+		predN_res = p1*(mydata1$N )
+		predN_res2 = p1*(subset(res_data,replicate.number==6)$N )
+
+		#Basic plots of data and fits: 
+		par(mfrow = c(2,1))
+		#First plot
+		plot(actN_res, ylim = c(0,max( c( actN_res,predN_res ),na.rm=T ) ),xlab = "Time",
+			ylab = "Resident density" )
+		points(predN_res,col="blue")
+		#Second, over full time series
+		plot(subset(res_data,replicate.number==6)$N , ylim = c(0,max( subset(res_data,replicate.number==6)$N ,
+			na.rm=T ) ), xlab = "Time",	ylab = "Resident density" )
+		points(predN_res2, col ="blue")
+
+
 		#================================================================================
-		#The NLME approach: better, but complicated
+		#The NLME approach
 		#================================================================================
-		#Parse out the subset of 3 mesocosms based on the invader ID and Temp combo
-		mydata = subset(m1_data_long, mesocosm.ID == u_treats &  species == u_invader  )
-		#Make this a grouped data set for NLME. This groups by replicate number
-        mydata2 = groupedData(N~day_n|replicate.number, data = mydata)
-        mydata2 = na.exclude(mydata2) #NLME won't work with NAs 
-        #Use NLME to fit an AR(1) model with replicate number as a random effect
-        # all_models[n] = list(nlme(N ~ SSasymp(day_n, Asym, R0, lrc),fixed = Asym+R0+lrc~1, 
-        # 	random =  Asym ~1, correlation=corARMA(0.2, form=~day_n, p=1, q=0),
-        # 	start = c(unlist(getInitial(N ~ SSasymp(day_n, Asym, R0, lrc),data=mydata2) )), 
-        # 	data=mydata2))
+
 
     	tryCatch( { 
 
