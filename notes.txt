@@ -1,0 +1,16 @@
+#================================================================================
+#Added this file for notes! These are observations and things to work on. 
+#================================================================================
+
+December 11, 2019
+
+Using any sort of NLS approach to fit the non-linear population growth rate function
+(e.g. a Leslie-Gower model) is tricky. NLS tends to: 
+1. Fail if starting parameter values are not close to final values. 
+2. Give biologically unreasonable parameter values if the time-series of invasion are not 
+	carefully windowed
+3. Have a really hard time when both alpha_ii and alpha_ij are in the same model. 
+
+Windowing the data so that it is constrained to important periods of population growth in each species -- i.e. pre-invasion for the resident, and a precise invasion period for the invader -- minimizes errors and gives the best fits. In this case, single-alpha models can be used (only alpha_ii * N_res for the resident and alpha_ij*N_res for the invader) that tend to fit better and actually converge. However, what is needed is a rigorous and automated way to identify the "pre-invasion" and "invasion" periods. 
+
+For the invader, this period is identified by the log-linear period of growth. But how to automate a way to identify this period? 
