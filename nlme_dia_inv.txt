@@ -1,0 +1,54 @@
+Dia as invader, T = x
+Length  Class   Mode 
+     0   NULL   NULL 
+Dia as invader, T = 28x
+Nonlinear mixed-effects model fit by maximum likelihood
+  Model: LG_inv 
+ Data: mydata1 
+       AIC     BIC    logLik
+  131.4258 139.833 -59.71292
+
+Random effects:
+ Formula: lambda ~ 1 | replicate.number
+              lambda
+StdDev: 0.0001195122
+
+ Formula: alpha_ij ~ 1 | replicate.number %in% replicate.number
+            alpha_ij Residual
+StdDev: 1.578534e-06 2.032352
+
+Correlation Structure: ARMA(1,0)
+ Formula: ~day_n | replicate.number/replicate.number 
+ Parameter estimate(s):
+     Phi1 
+0.8434533 
+Fixed effects: list(lambda ~ 1, alpha_ij ~ 1) 
+               Value   Std.Error DF   t-value p-value
+lambda   -0.01494782 0.022223563 26  -0.67261  0.5071
+alpha_ij -0.02807792 0.000481946 26 -58.25944  0.0000
+ Correlation: 
+         lambda
+alpha_ij 0.565 
+
+Standardized Within-Group Residuals:
+         Min           Q1          Med           Q3          Max 
+-0.008620989  0.242826227  0.544021886  0.941780307  2.701659343 
+
+Number of Observations: 30
+Number of Groups: 
+                        replicate.number 
+                                       3 
+replicate.number.1 %in% replicate.number 
+                                       3 
+Dia as invader, T = 27x
+Length  Class   Mode 
+     0   NULL   NULL 
+Dia as invader, T = 26x
+Length  Class   Mode 
+     0   NULL   NULL 
+Dia as invader, T = 24x
+Length  Class   Mode 
+     0   NULL   NULL 
+Dia as invader, T = 20x
+Length  Class   Mode 
+     0   NULL   NULL 

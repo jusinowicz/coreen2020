@@ -1,0 +1,126 @@
+Dia as resident, T = 20x
+Nonlinear mixed-effects model fit by maximum likelihood
+  Model: LG_res 
+ Data: mydata1 
+       AIC     BIC    logLik
+  31.21637 36.5586 -9.608183
+
+Random effects:
+ Formula: lambda ~ 1 | replicate.number
+              lambda
+StdDev: 1.743614e-05
+
+ Formula: alpha_ii ~ 1 | replicate.number %in% replicate.number
+            alpha_ii Residual
+StdDev: 1.479157e-06 0.412652
+
+Correlation Structure: ARMA(1,0)
+ Formula: ~day_n | replicate.number/replicate.number 
+ Parameter estimate(s):
+        Phi1 
+1.148789e-07 
+Fixed effects: list(lambda ~ 1, alpha_ii ~ 1) 
+             Value  Std.Error DF  t-value p-value
+lambda   1.5150570 0.28601180 14 5.297184  0.0001
+alpha_ii 0.0057516 0.00414894 14 1.386274  0.1873
+ Correlation: 
+         lambda
+alpha_ii 0.868 
+
+Standardized Within-Group Residuals:
+       Min         Q1        Med         Q3        Max 
+-1.6100016 -0.5815033 -0.1584190  0.7737108  1.8472454 
+
+Number of Observations: 18
+Number of Groups: 
+                        replicate.number 
+                                       3 
+replicate.number.1 %in% replicate.number 
+                                       3 
+Dia as resident, T = 24x
+Nonlinear mixed-effects model fit by maximum likelihood
+  Model: LG_res 
+ Data: mydata1 
+       AIC      BIC    logLik
+  14.57345 19.91568 -1.286724
+
+Random effects:
+ Formula: lambda ~ 1 | replicate.number
+              lambda
+StdDev: 2.246872e-06
+
+ Formula: alpha_ii ~ 1 | replicate.number %in% replicate.number
+            alpha_ii  Residual
+StdDev: 1.223632e-06 0.2922349
+
+Correlation Structure: ARMA(1,0)
+ Formula: ~day_n | replicate.number/replicate.number 
+ Parameter estimate(s):
+     Phi1 
+0.8118996 
+Fixed effects: list(lambda ~ 1, alpha_ii ~ 1) 
+            Value Std.Error DF  t-value p-value
+lambda   4.036819 0.7426460 14 5.435725  0.0001
+alpha_ii 0.011264 0.0040116 14 2.807903  0.0140
+ Correlation: 
+         lambda
+alpha_ii 0.919 
+
+Standardized Within-Group Residuals:
+       Min         Q1        Med         Q3        Max 
+-1.5843544 -0.9569458 -0.5566602  0.1928621  1.9303957 
+
+Number of Observations: 18
+Number of Groups: 
+                        replicate.number 
+                                       3 
+replicate.number.1 %in% replicate.number 
+                                       3 
+Dia as resident, T = 26x
+Length  Class   Mode 
+     0   NULL   NULL 
+Dia as resident, T = 27x
+Nonlinear mixed-effects model fit by maximum likelihood
+  Model: LG_res 
+ Data: mydata1 
+       AIC      BIC    logLik
+  27.13814 32.48037 -7.569069
+
+Random effects:
+ Formula: lambda ~ 1 | replicate.number
+              lambda
+StdDev: 6.451977e-05
+
+ Formula: alpha_ii ~ 1 | replicate.number %in% replicate.number
+           alpha_ii  Residual
+StdDev: 4.05836e-06 0.3735807
+
+Correlation Structure: ARMA(1,0)
+ Formula: ~day_n | replicate.number/replicate.number 
+ Parameter estimate(s):
+     Phi1 
+0.5762477 
+Fixed effects: list(lambda ~ 1, alpha_ii ~ 1) 
+            Value Std.Error DF   t-value p-value
+lambda   5.154903  4.021544 14 1.2818217  0.2207
+alpha_ii 0.019950  0.020658 14 0.9657579  0.3506
+ Correlation: 
+         lambda
+alpha_ii 0.99  
+
+Standardized Within-Group Residuals:
+        Min          Q1         Med          Q3         Max 
+-1.20431262 -0.81039378 -0.48298746 -0.09184802  2.37680412 
+
+Number of Observations: 18
+Number of Groups: 
+                        replicate.number 
+                                       3 
+replicate.number.1 %in% replicate.number 
+                                       3 
+Dia as resident, T = 28x
+Length  Class   Mode 
+     0   NULL   NULL 
+Dia as resident, T = 30x
+Length  Class   Mode 
+     0   NULL   NULL 

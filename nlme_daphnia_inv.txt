@@ -1,0 +1,198 @@
+Daphnia as invader, T = 20x
+Nonlinear mixed-effects model fit by maximum likelihood
+  Model: LG_inv 
+ Data: mydata1 
+       AIC      BIC    logLik
+  79.48166 87.88884 -33.74083
+
+Random effects:
+ Formula: lambda ~ 1 | replicate.number
+              lambda
+StdDev: 0.0001747617
+
+ Formula: alpha_ij ~ 1 | replicate.number %in% replicate.number
+            alpha_ij  Residual
+StdDev: 8.857035e-07 0.7455695
+
+Correlation Structure: ARMA(1,0)
+ Formula: ~day_n | replicate.number/replicate.number 
+ Parameter estimate(s):
+     Phi1 
+0.3140381 
+Fixed effects: list(lambda ~ 1, alpha_ij ~ 1) 
+              Value  Std.Error DF   t-value p-value
+lambda    0.7743422 0.13754386 26  5.629783       0
+alpha_ij -0.0015268 0.00024293 26 -6.285056       0
+ Correlation: 
+         lambda
+alpha_ij 0.721 
+
+Standardized Within-Group Residuals:
+       Min         Q1        Med         Q3        Max 
+-1.3783336 -0.8738685 -0.3006054  0.8414359  2.2541003 
+
+Number of Observations: 30
+Number of Groups: 
+                        replicate.number 
+                                       3 
+replicate.number.1 %in% replicate.number 
+                                       3 
+Daphnia as invader, T = 24x
+Nonlinear mixed-effects model fit by maximum likelihood
+  Model: LG_inv 
+ Data: mydata1 
+       AIC      BIC    logLik
+  121.3083 129.7155 -54.65417
+
+Random effects:
+ Formula: lambda ~ 1 | replicate.number
+              lambda
+StdDev: 0.0001908485
+
+ Formula: alpha_ij ~ 1 | replicate.number %in% replicate.number
+           alpha_ij Residual
+StdDev: 6.68559e-07 1.496106
+
+Correlation Structure: ARMA(1,0)
+ Formula: ~day_n | replicate.number/replicate.number 
+ Parameter estimate(s):
+      Phi1 
+0.01288684 
+Fixed effects: list(lambda ~ 1, alpha_ij ~ 1) 
+              Value  Std.Error DF    t-value p-value
+lambda    0.7153071 0.20329011 26   3.518652  0.0016
+alpha_ij -0.0022144 0.00014197 26 -15.597653  0.0000
+ Correlation: 
+         lambda
+alpha_ij 0.849 
+
+Standardized Within-Group Residuals:
+        Min          Q1         Med          Q3         Max 
+-1.91125585 -0.40687285 -0.30347575 -0.05145588  4.39735974 
+
+Number of Observations: 30
+Number of Groups: 
+                        replicate.number 
+                                       3 
+replicate.number.1 %in% replicate.number 
+                                       3 
+Daphnia as invader, T = 26x
+Nonlinear mixed-effects model fit by maximum likelihood
+  Model: LG_inv 
+ Data: mydata1 
+       AIC      BIC    logLik
+  85.81776 94.22494 -36.90888
+
+Random effects:
+ Formula: lambda ~ 1 | replicate.number
+              lambda
+StdDev: 8.033605e-05
+
+ Formula: alpha_ij ~ 1 | replicate.number %in% replicate.number
+           alpha_ij  Residual
+StdDev: 1.83399e-07 0.8317311
+
+Correlation Structure: ARMA(1,0)
+ Formula: ~day_n | replicate.number/replicate.number 
+ Parameter estimate(s):
+     Phi1 
+0.4726604 
+Fixed effects: list(lambda ~ 1, alpha_ij ~ 1) 
+              Value  Std.Error DF    t-value p-value
+lambda    0.7713267 0.14367022 26   5.368731       0
+alpha_ij -0.0020074 0.00016176 26 -12.409339       0
+ Correlation: 
+         lambda
+alpha_ij 0.799 
+
+Standardized Within-Group Residuals:
+       Min         Q1        Med         Q3        Max 
+-1.5196530 -0.7603809 -0.3289474  0.4646195  2.0120843 
+
+Number of Observations: 30
+Number of Groups: 
+                        replicate.number 
+                                       3 
+replicate.number.1 %in% replicate.number 
+                                       3 
+Daphnia as invader, T = 27x
+Nonlinear mixed-effects model fit by maximum likelihood
+  Model: LG_inv 
+ Data: mydata1 
+       AIC      BIC    logLik
+  95.74704 104.1542 -41.87352
+
+Random effects:
+ Formula: lambda ~ 1 | replicate.number
+              lambda
+StdDev: 0.0001137082
+
+ Formula: alpha_ij ~ 1 | replicate.number %in% replicate.number
+            alpha_ij  Residual
+StdDev: 9.072134e-06 0.9832426
+
+Correlation Structure: ARMA(1,0)
+ Formula: ~day_n | replicate.number/replicate.number 
+ Parameter estimate(s):
+     Phi1 
+0.5068495 
+Fixed effects: list(lambda ~ 1, alpha_ij ~ 1) 
+              Value Std.Error DF    t-value p-value
+lambda    0.8785136 0.3207626 26  2.7388279  0.0110
+alpha_ij -0.0009696 0.0013089 26 -0.7407701  0.4655
+ Correlation: 
+         lambda
+alpha_ij 0.858 
+
+Standardized Within-Group Residuals:
+       Min         Q1        Med         Q3        Max 
+-1.7531298 -0.6288929 -0.1933864  0.1261626  3.3710757 
+
+Number of Observations: 30
+Number of Groups: 
+                        replicate.number 
+                                       3 
+replicate.number.1 %in% replicate.number 
+                                       3 
+Daphnia as invader, T = 28x
+Nonlinear mixed-effects model fit by maximum likelihood
+  Model: LG_inv 
+ Data: mydata1 
+       AIC      BIC    logLik
+  93.65158 102.0588 -40.82579
+
+Random effects:
+ Formula: lambda ~ 1 | replicate.number
+              lambda
+StdDev: 6.111136e-05
+
+ Formula: alpha_ij ~ 1 | replicate.number %in% replicate.number
+            alpha_ij  Residual
+StdDev: 1.874614e-71 0.9435756
+
+Correlation Structure: ARMA(1,0)
+ Formula: ~day_n | replicate.number/replicate.number 
+ Parameter estimate(s):
+        Phi1 
+-9.96875e-08 
+Fixed effects: list(lambda ~ 1, alpha_ij ~ 1) 
+              Value Std.Error DF    t-value p-value
+lambda    0.9561507 0.4818878 26  1.9841769  0.0579
+alpha_ij -0.0002107 0.0020081 26 -0.1049123  0.9173
+ Correlation: 
+         lambda
+alpha_ij 0.936 
+
+Standardized Within-Group Residuals:
+       Min         Q1        Med         Q3        Max 
+-1.0757945 -0.5721274 -0.1687147  0.2613922  3.9083542 
+
+Number of Observations: 30
+Number of Groups: 
+                        replicate.number 
+                                       3 
+replicate.number.1 %in% replicate.number 
+                                       3 
+Daphnia as invader, T = 30x
+Length  Class   Mode 
+     0   NULL   NULL 
