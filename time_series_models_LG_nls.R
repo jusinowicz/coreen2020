@@ -187,7 +187,7 @@ i = 1
 
 		#Save model fits and predicted values
 		all_models_daph_res[[index1]] = m1
-		model_fit1 = data.frame(day_n =mydata1$day_n, N_inv = predN_res )
+		model_fit1 = data.frame(day_n =mydata1$day_n, N_res = predN_res )
 	    model_fit_daph_res[[index1]] = model_fit1
 		}, error = function(e) {} ) 
 
@@ -376,7 +376,7 @@ i=2
 			ylab = "Invader density" )
 		points(predN_inv,col="blue")
 		#Second, over full time series
-		plot(subset(inv_data,replicate.number==rep_use)$N_inv, ylim = c(0,max( subset(inv_data,replicate.number==rep_use)$N_inv ,
+		plot(subset(inv_data,replicate.number==rep_use)$N_res, ylim = c(0,max( subset(inv_data,replicate.number==rep_use)$N_inv ,
 			na.rm=T ) ), xlab = "Time",	ylab = "Invader density" )
 		points(predN_inv2, col ="blue")
 
