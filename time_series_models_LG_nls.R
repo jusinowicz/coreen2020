@@ -98,7 +98,7 @@ i = 1
 
 	for (n in 1: (ntreatments)){
 		#Since the treatments are regular, set the start/end position of
-		#the subset qith:  
+		#the subset with:  
 		pos1 = (n-1)*2 + n
 		pos2 = pos1+2
 		u_treats = treats[pos1:pos2]
