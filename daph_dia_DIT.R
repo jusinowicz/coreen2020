@@ -261,12 +261,380 @@ dev.off()
 
 }
 
+#=============================================================================
+# Plot a local DIT quantity alongside the population dynamics
+#=============================================================================
+#Active information and population dynamics
+ai_out_all = data.frame( matrix(ncol = 6,nrow=0) ) 
+colnames(ai_out_all) = c("temp", "group", "time", "species", "ai", "out1")
+for(w in 2:(ntreatments)) {
+  
+
+  #First half of the treatments: 
+  k=2
+  nt1 = k
+  if(nrow(out1[[w]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1[[w]])[1]-1
+
+  ai_comb = di_web[[w]]$ai_local
+  out1_comb = out1[[w]][nt1:nt2,]/(0.5*max(out1[[w]][nt1:nt2,] ) ) #Scale by max? 
+  #Turn ai into a data frame with headings matching ai_all
+  colnames(ai_comb) = invader
+  ai_comb=data.frame(ai_comb)
+  ai_comb$temp = temps[w] #Add temperature 
+  ai_comb$group = c("dia")
+  ai_comb=ai_comb%>%mutate(time=row_number())
+  ai_temp = ai_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=ai, invader)
+
+  #Turn out1 into a data frame with headings matching ai_all
+  colnames(out1_comb) = invader
+  out1_comb=data.frame(out1_comb)
+  out1_comb$temp = temps[w] #Add temperature 
+  out1_comb$group = c("dia")
+  out1_comb=out1_comb%>%mutate(time=row_number())
+  out1_temp = out1_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1, invader)
+  
+  all_temp1 = ai_temp%>% left_join(out1_temp,all.x=T)
+
+  #Second half of the treatments: 
+  w2 = w+ntreatments
+  k=2
+  nt1 = k
+  if(nrow(out1[[w2]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1[[w2]])[1]-1
+
+  ai_comb = di_web[[w2]]$ai_local
+  out1_comb = out1[[w2]][nt1:nt2,]/(0.5*max(out1[[w2]][nt1:nt2,] ) ) #Scale by max? 
+ 
+  #Turn ai into a data frame with headings matching ai_all
+  colnames(ai_comb) = invader
+  ai_comb=data.frame(ai_comb)
+  ai_comb$temp = temps[w] #Add temperature 
+  ai_comb$group = c("daph")
+  ai_comb=ai_comb%>%mutate(time=row_number())
+  ai_temp = ai_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=ai, invader)
+
+  #Turn out1 into a data frame with headings matching ai_all
+  colnames(out1_comb) = invader
+  out1_comb=data.frame(out1_comb)
+  out1_comb$temp = temps[w] #Add temperature 
+  out1_comb$group = c("daph")
+  out1_comb=out1_comb%>%mutate(time=row_number())
+  out1_temp = out1_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1, invader)
+  
+  all_temp2 = ai_temp%>% left_join(out1_temp,all.x=T)
+
+  all_temp = all_temp1%>% full_join(all_temp2)
+
+  ai_out_all=rbind(ai_out_all,all_temp)
+      
+}
+
+#Make the plot
+ggplot()+ 
+  geom_point(data = ai_out_all, aes(x = time, y = ai, color = interaction(group,"AI"), group = interaction(species,group)))+
+  geom_line(data = ai_out_all, aes(x = time, y = ai, color = interaction(group,"AI"), group = interaction(species,group)))+
+  geom_line(data = ai_out_all, aes(x = time, y = out1, color =interaction(group,"Pop"),  group = interaction(species,group)))+
+  #scale_y_continuous(sec.axis = sec_axis(~.*5, name = "AI"))+
+  facet_grid(temp~species)+
+  #scale_y_log10()+
+  theme_bw()+
+  #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
+  xlab("Time")+
+  ylab("Population")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./pop_localAI_plot1.pdf", width = 8, height = 10)
+
+
+#Transfer entropy and population dynamics
+te_out_all = data.frame( matrix(ncol = 6,nrow=0) ) 
+colnames(te_out_all) = c("temp", "group", "time", "species", "te", "out1")
+for(w in 2:(ntreatments)) {
+  
+
+  #First half of the treatments: 
+  k=2
+  nt1 = k
+  if(nrow(out1[[w]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1[[w]])[1]-1
+
+  te_comb = di_web[[w]]$te_local
+  out1_comb = out1[[w]][nt1:nt2,]/(0.5*max(out1[[w]][nt1:nt2,] ) ) #Scale by max? 
+  #Turn te into a data frame with headings matching te_all
+  colnames(te_comb) = invader
+  te_comb=data.frame(te_comb)
+  te_comb$temp = temps[w] #Add temperature 
+  te_comb$group = c("dia")
+  te_comb=te_comb%>%mutate(time=row_number())
+  te_temp = te_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=te, invader)
+
+  #Turn out1 into a data frame with headings matching te_all
+  colnames(out1_comb) = invader
+  out1_comb=data.frame(out1_comb)
+  out1_comb$temp = temps[w] #Add temperature 
+  out1_comb$group = c("dia")
+  out1_comb=out1_comb%>%mutate(time=row_number())
+  out1_temp = out1_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1, invader)
+  
+  all_temp1 = te_temp%>% left_join(out1_temp,all.x=T)
+
+  #Second half of the treatments: 
+  w2 = w+ntreatments
+  k=2
+  nt1 = k
+  if(nrow(out1[[w2]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1[[w2]])[1]-1
+
+  te_comb = di_web[[w2]]$te_local
+  out1_comb = out1[[w2]][nt1:nt2,]/(0.5*max(out1[[w2]][nt1:nt2,] ) ) #Scale by max? 
+ 
+  #Turn te into a data frame with headings matching te_all
+  colnames(te_comb) = invader
+  te_comb=data.frame(te_comb)
+  te_comb$temp = temps[w] #Add temperature 
+  te_comb$group = c("daph")
+  te_comb=te_comb%>%mutate(time=row_number())
+  te_temp = te_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=te, invader)
+
+  #Turn out1 into a data frame with headings matching te_all
+  colnames(out1_comb) = invader
+  out1_comb=data.frame(out1_comb)
+  out1_comb$temp = temps[w] #Add temperature 
+  out1_comb$group = c("daph")
+  out1_comb=out1_comb%>%mutate(time=row_number())
+  out1_temp = out1_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1, invader)
+  
+  all_temp2 = te_temp%>% left_join(out1_temp,all.x=T)
+
+  all_temp = all_temp1%>% full_join(all_temp2)
+
+  te_out_all=rbind(te_out_all,all_temp)
+      
+}
+
+#Make the plot
+ggplot()+ 
+  geom_line(data = te_out_all, aes(x = time, y = te, color = interaction(group,"te"), group = interaction(species,group)))+
+  geom_point(data = te_out_all, aes(x = time, y = te, color = interaction(group,"te"), group = interaction(species,group)))+
+  geom_line(data = te_out_all, aes(x = time, y = out1, color =interaction(group,"Pop"),  group = interaction(species,group)))+
+  #scale_y_continuous(sec.axis = sec_axis(~.*5, name = "te"))+
+  facet_grid(temp~species)+
+  #scale_y_log10()+
+  theme_bw()+
+  #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
+  xlab("Time")+
+  ylab("Population")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./pop_localTE_plot1.pdf", width = 8, height = 10)
 
 #=============================================================================
 # Plot of complexity (Excess Entropy) against ?????Cost????? per temperature
 # treatment. Meant to look for something similar to Moore's curves of 
 # integrated circuit complexity vs. manufacturing cost from 1965 paper. 
 #=============================================================================
+#Active information and population dynamics
+ai_outdiff_all = data.frame( matrix(ncol = 6,nrow=0) ) 
+colnames(ai_outdiff_all) = c("temp", "group", "time", "species", "ai", "out1_diff")
+for(w in 2:(ntreatments)) {
+  
+
+  #First half of the treatments: 
+  k=2
+  nt1 = k-1
+  if(nrow(out1_diff[[w]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1_diff[[w]])[1]-1
+  din = nt2-nt1+1
+
+  ai_comb = di_web[[w]]$ai_local[1:din,]
+  out1_diff_comb = out1_diff[[w]][nt1:nt2,]/(0.5*max(out1_diff[[w]][nt1:nt2,] ) ) #Scale by max? 
+  #Turn ai into a data frame with headings matching ai_all
+  colnames(ai_comb) = invader
+  ai_comb=data.frame(ai_comb)
+  ai_comb$temp = temps[w] #Add temperature 
+  ai_comb$group = c("dia")
+  ai_comb=ai_comb%>%mutate(time=row_number())
+  ai_temp = ai_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=ai, invader)
+
+  #Turn out1_diff into a data frame with headings matching ai_all
+  colnames(out1_diff_comb) = invader
+  out1_diff_comb=data.frame(out1_diff_comb)
+  out1_diff_comb$temp = temps[w] #Add temperature 
+  out1_diff_comb$group = c("dia")
+  out1_diff_comb=out1_diff_comb%>%mutate(time=row_number())
+  out1_diff_temp = out1_diff_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1_diff, invader)
+  
+  all_temp1 = ai_temp%>% left_join(out1_diff_temp,all.x=T)
+
+  #Second half of the treatments: 
+  w2 = w+ntreatments
+  k=2
+  nt1 = k-1
+  if(nrow(out1_diff[[w2]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1_diff[[w2]])[1]-1
+  din = nt2-nt1+1
+
+  ai_comb = di_web[[w2]]$ai_local[1:din,]
+  out1_diff_comb = out1_diff[[w2]][nt1:nt2,]/(0.5*max(out1_diff[[w2]][nt1:nt2,] ) ) #Scale by max? 
+ 
+  #Turn ai into a data frame with headings matching ai_all
+  colnames(ai_comb) = invader
+  ai_comb=data.frame(ai_comb)
+  ai_comb$temp = temps[w] #Add temperature 
+  ai_comb$group = c("daph")
+  ai_comb=ai_comb%>%mutate(time=row_number())
+  ai_temp = ai_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=ai, invader)
+
+  #Turn out1_diff into a data frame with headings matching ai_all
+  colnames(out1_diff_comb) = invader
+  out1_diff_comb=data.frame(out1_diff_comb)
+  out1_diff_comb$temp = temps[w] #Add temperature 
+  out1_diff_comb$group = c("daph")
+  out1_diff_comb=out1_diff_comb%>%mutate(time=row_number())
+  out1_diff_temp = out1_diff_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1_diff, invader)
+  
+  all_temp2 = ai_temp%>% left_join(out1_diff_temp,all.x=T)
+
+  all_temp = all_temp1%>% full_join(all_temp2)
+
+  ai_outdiff_all=rbind(ai_outdiff_all,all_temp)
+      
+}
+
+#Make the plot
+ggplot()+ 
+  geom_point(data = ai_outdiff_all, aes(x = ai, y = out1_diff, color = interaction(group,"AI"), group = interaction(species,group)))+
+  #scale_y_continuous(sec.axis = sec_axis(~.*5, name = "AI"))+
+  facet_grid(temp~species)+
+  #scale_y_log10()+
+  theme_bw()+
+  #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
+  xlab("Time")+
+  ylab("Population")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./diff_localAI_plot1.pdf", width = 8, height = 10)
+
+
+#Transfer entropy and population dynamics
+te_outdiff_all = data.frame( matrix(ncol = 6,nrow=0) ) 
+colnames(te_outdiff_all) = c("temp", "group", "time", "species", "te", "out1_diff")
+for(w in 2:(ntreatments)) {
+  
+
+ #First half of the treatments: 
+  k=2
+  nt1 = k-1
+  if(nrow(out1_diff[[w]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1_diff[[w]])[1]-1
+  din = nt2-nt1+1
+
+
+  te_comb = di_web[[w]]$te_local[1:din,]
+  out1_diff_comb = out1_diff[[w]][nt1:nt2,]/(0.5*max(out1_diff[[w]][nt1:nt2,] ) ) #Scale by max? 
+  #Turn te into a data frame with headings matching te_all
+  colnames(te_comb) = invader
+  te_comb=data.frame(te_comb)
+  te_comb$temp = temps[w] #Add temperature 
+  te_comb$group = c("dia")
+  te_comb=te_comb%>%mutate(time=row_number())
+  te_temp = te_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=te, invader)
+
+  #Turn out1_diff into a data frame with headings matching te_all
+  colnames(out1_diff_comb) = invader
+  out1_diff_comb=data.frame(out1_diff_comb)
+  out1_diff_comb$temp = temps[w] #Add temperature 
+  out1_diff_comb$group = c("dia")
+  out1_diff_comb=out1_diff_comb%>%mutate(time=row_number())
+  out1_diff_temp = out1_diff_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1_diff, invader)
+  
+  all_temp1 = te_temp%>% left_join(out1_diff_temp,all.x=T)
+
+  #Second half of the treatments: 
+  w2 = w+ntreatments
+  k=2
+  nt1 = k-1
+  if(nrow(out1_diff[[w2]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1_diff[[w2]])[1]-1
+  din = nt2-nt1+1
+
+  te_comb = di_web[[w2]]$te_local[1:din,]
+  out1_diff_comb = out1_diff[[w2]][nt1:nt2,]/(0.5*max(out1_diff[[w2]][nt1:nt2,] ) ) #Scale by max? 
+ 
+  #Turn te into a data frame with headings matching te_all
+  colnames(te_comb) = invader
+  te_comb=data.frame(te_comb)
+  te_comb$temp = temps[w] #Add temperature 
+  te_comb$group = c("daph")
+  te_comb=te_comb%>%mutate(time=row_number())
+  te_temp = te_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=te, invader)
+
+  #Turn out1_diff into a data frame with headings matching te_all
+  colnames(out1_diff_comb) = invader
+  out1_diff_comb=data.frame(out1_diff_comb)
+  out1_diff_comb$temp = temps[w] #Add temperature 
+  out1_diff_comb$group = c("daph")
+  out1_diff_comb=out1_diff_comb%>%mutate(time=row_number())
+  out1_diff_temp = out1_diff_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1_diff, invader)
+  
+  all_temp2 = te_temp%>% left_join(out1_diff_temp,all.x=T)
+
+  all_temp = all_temp1%>% full_join(all_temp2)
+
+  te_outdiff_all=rbind(te_outdiff_all,all_temp)
+      
+}
+
+#Make the plot
+ggplot()+ 
+  geom_point(data = te_outdiff_all, aes(x = te, y = out1_diff, color = interaction(group,"TE"), group = interaction(species,group)))+
+
+   #scale_y_continuous(sec.axis = sec_axis(~.*5, name = "te"))+
+  facet_grid(temp~species)+
+  #scale_y_log10()+
+  theme_bw()+
+  #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
+  xlab("Time")+
+  ylab("Population")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./diff_localTE_plot1.pdf", width = 8, height = 10)
+
+
+
+#============================================================================================
+#============================================================================================
+
+
 
 
 # fig.name = paste("moore_curve_DaphDia1.pdf",sep="")
