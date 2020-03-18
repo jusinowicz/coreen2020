@@ -349,9 +349,9 @@ ggplot()+
   theme_bw()+
   #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
   xlab("Time")+
-  ylab("Population")+
+  ylab("Population/active information")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-ggsave("./pop_localAI_plot1.pdf", width = 8, height = 10)
+ggsave("./time_localAI_plot1.pdf", width = 8, height = 10)
 
 
 #Transfer entropy and population dynamics
@@ -439,16 +439,43 @@ ggplot()+
   theme_bw()+
   #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
   xlab("Time")+
-  ylab("Population")+
+  ylab("Population/transfer entropy")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-ggsave("./pop_localTE_plot1.pdf", width = 8, height = 10)
+ggsave("./time_localTE_plot1.pdf", width = 8, height = 10)
 
 #=============================================================================
 # Plot of complexity (Excess Entropy) against ?????Cost????? per temperature
 # treatment. Meant to look for something similar to Moore's curves of 
 # integrated circuit complexity vs. manufacturing cost from 1965 paper. 
 #=============================================================================
-#Active information and population dynamics
+#Active information vs. number of individuals 
+ggplot()+ 
+  geom_point(data = ai_out_all, aes(x = ai, y = out1, color = interaction(group,"AI"), group = interaction(species,group)))+
+  #scale_y_continuous(sec.axis = sec_axis(~.*5, name = "AI"))+
+  facet_grid(temp~species)+
+  #scale_y_log10()+
+  theme_bw()+
+  #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
+  xlab("active information (bits)")+
+  ylab("Population")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./pop_localAI_plot1.pdf", width = 8, height = 10)
+
+#Transfer entropy vs. number of individuals 
+ggplot()+ 
+  geom_point(data = te_out_all, aes(x = te, y = out1, color = interaction(group,"TE"), group = interaction(species,group)))+
+  #scale_y_continuous(sec.axis = sec_axis(~.*5, name = "AI"))+
+  facet_grid(temp~species)+
+  #scale_y_log10()+
+  theme_bw()+
+  #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
+  xlab("transfer entropy (bits)")+
+  ylab("Population")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./pop_localTE_plot1.pdf", width = 8, height = 10)
+
+
+#Active information and slope of population growth curve
 ai_outdiff_all = data.frame( matrix(ncol = 6,nrow=0) ) 
 colnames(ai_outdiff_all) = c("temp", "group", "time", "species", "ai", "out1_diff")
 for(w in 2:(ntreatments)) {
@@ -532,8 +559,8 @@ ggplot()+
   #scale_y_log10()+
   theme_bw()+
   #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
-  xlab("Time")+
-  ylab("Population")+
+  xlab("active information (bits) ")+
+  ylab("1st derivative (individuals)")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 ggsave("./diff_localAI_plot1.pdf", width = 8, height = 10)
 
@@ -624,8 +651,8 @@ ggplot()+
   #scale_y_log10()+
   theme_bw()+
   #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
-  xlab("Time")+
-  ylab("Population")+
+  xlab("active information (bits) ")+
+  ylab("1st derivative (individuals)")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 ggsave("./diff_localTE_plot1.pdf", width = 8, height = 10)
 
