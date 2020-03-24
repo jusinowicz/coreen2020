@@ -21,9 +21,9 @@
 library(tidyverse)
 library(fields)
 source("./functions/info_theory_functions.R")
-#============================================================================
+#=============================================================================
 #Load data
-#============================================================================
+#=============================================================================
 #Coreen's experiment data
 m1=read.csv(file= "mesocosm_experiment_coreen_forbes.csv") 
 #m1_inv = m1[1:72,] #Just take the invasion experiments
