@@ -25,24 +25,45 @@ source("./functions/info_theory_functions.R")
 #Load data
 #=============================================================================
 #Coreen's experiment data
-m1=read.csv(file= "mesocosm_experiment_coreen_forbes.csv") 
+#m1=read.csv(file= "mesocosm_experiment_coreen_forbes.csv") 
 #m1_inv = m1[1:72,] #Just take the invasion experiments
 
-m1_data_long = m1 %>% 
-  gather(key = day, value = N, day1:day83) %>% 
-  dplyr::select(-X) %>% 
-  mutate(day_n = as.numeric(gsub(x = day, pattern = "[^0-9.-]", replacement = "")))
+#This bit is now depricated with the new data sheet 
+# m1_data_long = m1 %>% 
+#   gather(key = day, value = N, day1:day83) %>% 
+#   dplyr::select(-X) %>% 
+#   mutate(day_n = as.numeric(gsub(x = day, pattern = "[^0-9.-]", replacement = "")))
 
-m1_data_long$replicate.number= factor(m1_data_long$replicate.number)
+# m1_data_long$replicate_number= factor(m1_data_long$replicate_number)
+
+m1_data_long=read.csv(file= "tequila_master_data.csv") 
+m1_data_long$date = ymd(m1_data_long$date)
+
+algae1 = read.csv(file= "algae_export.csv") 
+#Fix dates in algae:
+algae1$date =  parse_date_time(algae1$date, "md")
+year(algae1$date) [year(algae1$date) == 0000] = 2019
+year(algae1$date) [year(algae1$date) == 2020 & 
+    month(algae1$date) > 9  & month(algae1$date) <=12  ] = 2019
+
+algae1$date = ymd (algae1$date)
+
+#Join algae to m1_...
+m1_data_long= m1_data_long %>% 
+  left_join( algae1) 
+
+colnames(m1_data_long)[colnames(m1_data_long) == "zooplankton_abundance"] = "N"
+
+#write.csv (file="tequila_master_data_algae.csv", m1_data_long)
 #=============================================================================
 #Plot the data
 #=============================================================================
 m1_data_long %>% 
   ungroup() %>% 
   filter(!is.na(N)) %>% 
-  ggplot(aes(x = day_n, y = N, color = species, group = interaction(species,replicate.number)))+
+  ggplot(aes(x = day_n, y = N, color = species, group = interaction(species,replicate_number)))+
   geom_line()+
-  facet_grid(temperature~invade.mono)+
+  facet_grid(temperature~invade_monoculture)+
   scale_y_log10()+
   theme_bw()+
   scale_color_manual(values = c("dodgerblue1", "red1"), name = NA)+
@@ -58,7 +79,7 @@ Collapse
 nspp=2
 temps = (unique(m1_data_long$temperature))
 ntreatments =  length(unique(m1_data_long$temperature))
-treats = unique(m1_data_long$mesocosm.ID)
+treats = unique(m1_data_long$mesocosm_id)
 invader = unique(m1_data_long$species)
 invasions_per = length(treats)/4 #Treatment entries correponding to each spp 
 inv_day = 28 #The first day of attempted invasion
@@ -100,11 +121,11 @@ for (i in 1:2) {
     #Make a new resident data set to fit the growth rate function with nlme/nls 
     #The new data set includes a column for n(t+1)/n(t) and a columnf for the time 
     #interval across subsequent measurements.  
-    res_tmp = subset(m1_data_long, mesocosm.ID == u_treats &  species == u_res   )
-        res_tmp = na.exclude(res_tmp) #NLME won't work with NAs 
+    res_tmp = subset(m1_data_long, mesocosm_id == u_treats &  species == u_res   )
+        res_tmp = res_tmp[!is.na(res_tmp$N),] #NLME won't work with NAs 
         #Arrange the data by replicate number, then add a new column for the delta N
         res_tmp = res_tmp %>% 
-            arrange(replicate.number)%>%
+            arrange(replicate_number)%>%
             mutate(Ndiff_res = lead( N-lag(N),)/lead(day_n-lag(day_n))) #"lead" lines up the result 
     res_tmp$Ndiff_res[res_tmp$day_n == max(res_tmp$day_n )] =NA #Remove last day
     res_tmp = res_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step
@@ -115,22 +136,23 @@ for (i in 1:2) {
     #Make a new invader data set to fit the growth rate function with nlme/nls 
     #The new data set includes a column for n(t+1)/n(t) and a columnf for the time 
     #interval across subsequent measurements.  
-    inv_tmp = subset(m1_data_long, mesocosm.ID == u_treats &  species == u_invader   )
+    inv_tmp = subset(m1_data_long, mesocosm_id == u_treats &  species == u_invader   )
         inv_tmp = na.exclude(inv_tmp) #NLME won't work with NAs 
+        res_tmp = res_tmp[!is.na(res_tmp$N),]
         #inv_tmp$N[is.na(inv_tmp$N)] = 0 #Replace NAs with 0  
         #Arrange the data by replicate number, then add a new column for the delta N
         inv_tmp = inv_tmp %>% 
-            arrange(replicate.number)%>%
+            arrange(replicate_number)%>%
             mutate(Ndiff_inv = lead( N-lag(N),)/lead(day_n-lag(day_n))) #"lead" lines up the result 
     inv_tmp$Ndiff_inv[inv_tmp$day_n == max(inv_tmp$day_n )] =NA #Remove last day
     inv_tmp = inv_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step 
     inv_tmp = inv_tmp %>% mutate(N_inv = N)
     #This line adds the resident densities on the matching days from the matching 
     #replicates to the data table inv_tmp
-    inv_tmp = inv_tmp %>% left_join( select( res_tmp, replicate.number,day_n,N_res,Ndiff_res),
-     by= (c( "day_n" = "day_n", "replicate.number"="replicate.number" )) )
-    res_tmp = res_tmp %>% left_join( select( inv_tmp, replicate.number,day_n,N_inv,Ndiff_inv),
-       by= (c( "day_n" = "day_n", "replicate.number"="replicate.number" )) )
+    inv_tmp = inv_tmp %>% left_join( select( res_tmp, replicate_number,day_n,N_res,Ndiff_res),
+     by= (c( "day_n" = "day_n", "replicate_number"="replicate_number" )) )
+    res_tmp = res_tmp %>% left_join( select( inv_tmp, replicate_number,day_n,N_inv,Ndiff_inv),
+       by= (c( "day_n" = "day_n", "replicate_number"="replicate_number" )) )
     res_tmp$N_inv[is.na(res_tmp$N_inv)] = 0 #Replace NAs with 0  
 
     #Create a dummy data set in the few cases that experiment was essentially 
