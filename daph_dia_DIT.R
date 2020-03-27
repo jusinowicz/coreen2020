@@ -19,6 +19,7 @@
 #Load libraries
 #=============================================================================
 library(tidyverse)
+library(lubridate)
 library(fields)
 source("./functions/info_theory_functions.R")
 #=============================================================================
@@ -90,12 +91,18 @@ no_reps = 18 #The number of replicated mesocosms total per resident/invader
 #=============================================================================
 out1 = vector("list",ntreatments*2)
 out1_diff = vector("list",ntreatments*2)
+out1_alg = vector("list",ntreatments*2)
+out1_bs = vector("list",ntreatments*2)
+
 #Dynamic information metrics calculated from the (discretized) time series 
 di_web =  vector("list",ntreatments*2)
 #Track the average transfer entropy and separable information between each pair of 
 #species as a way to build a network of information flow through the network. 
 te_web =  vector("list",ntreatments*2)
 si_web = vector("list",ntreatments*2) 
+
+#The ensemble version of the AI
+aiE_web = vector("list",ntreatments*2)
 
 #=============================================================================
 # First, loop over both diaphanosoma and daphnia when diaphanasoma is the 
@@ -122,36 +129,49 @@ for (i in 1:2) {
     #The new data set includes a column for n(t+1)/n(t) and a columnf for the time 
     #interval across subsequent measurements.  
     res_tmp = subset(m1_data_long, mesocosm_id == u_treats &  species == u_res   )
-        res_tmp = res_tmp[!is.na(res_tmp$N),] #NLME won't work with NAs 
-        #Arrange the data by replicate number, then add a new column for the delta N
-        res_tmp = res_tmp %>% 
-            arrange(replicate_number)%>%
-            mutate(Ndiff_res = lead( N-lag(N),)/lead(day_n-lag(day_n))) #"lead" lines up the result 
+    res_tmp = res_tmp[!is.na(res_tmp$N),] #NLME won't work with NAs 
+    #Arrange the data by replicate number, then add a new column for the delta N
+    res_tmp = res_tmp %>% 
+        arrange(replicate_number)%>%
+        mutate(Ndiff_res = lead( N-lag(N),)/lead(day_n-lag(day_n))) #"lead" lines up the result 
+       
+    #Add a new column for the change in algal biomass
+    res_tmp = res_tmp %>%
+        mutate(Ndiff_alg = (algae_abundance -lag(algae_cells_mL)) )  #"lead" lines up the result
+
     res_tmp$Ndiff_res[res_tmp$day_n == max(res_tmp$day_n )] =NA #Remove last day
     res_tmp = res_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step
     res_tmp$tdiff[res_tmp$tdiff<0] = 1 #Remove negative time steplag(N)s
     res_tmp = res_tmp %>% mutate(N_res = N)
-
+    colnames(res_tmp)[colnames(res_tmp)=="zooplankton_length_cm"] = "zooplankton_length_cm_res"
 
     #Make a new invader data set to fit the growth rate function with nlme/nls 
     #The new data set includes a column for n(t+1)/n(t) and a columnf for the time 
     #interval across subsequent measurements.  
     inv_tmp = subset(m1_data_long, mesocosm_id == u_treats &  species == u_invader   )
-        inv_tmp = na.exclude(inv_tmp) #NLME won't work with NAs 
-        res_tmp = res_tmp[!is.na(res_tmp$N),]
-        #inv_tmp$N[is.na(inv_tmp$N)] = 0 #Replace NAs with 0  
-        #Arrange the data by replicate number, then add a new column for the delta N
-        inv_tmp = inv_tmp %>% 
-            arrange(replicate_number)%>%
-            mutate(Ndiff_inv = lead( N-lag(N),)/lead(day_n-lag(day_n))) #"lead" lines up the result 
+    inv_tmp = inv_tmp[!is.na(inv_tmp$N),]
+    #inv_tmp$N[is.na(inv_tmp$N)] = 0 #Replace NAs with 0  
+    #Arrange the data by replicate number, then add a new column for the delta N
+    inv_tmp = inv_tmp %>% 
+        arrange(replicate_number)%>%
+        mutate(Ndiff_inv = lead( N-lag(N),)/lead(day_n-lag(day_n))) #"lead" lines up the result 
+    
+    #Add a new column for the change in algal biomass
+    inv_tmp = inv_tmp %>%
+        mutate(Ndiff_alg = (algae_abundance -lag(algae_cells_mL)) )  #"lead" lines up the result
+
     inv_tmp$Ndiff_inv[inv_tmp$day_n == max(inv_tmp$day_n )] =NA #Remove last day
     inv_tmp = inv_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step 
     inv_tmp = inv_tmp %>% mutate(N_inv = N)
+    colnames(inv_tmp)[colnames(inv_tmp)=="zooplankton_length_cm"] = "zooplankton_length_cm_inv"
+
     #This line adds the resident densities on the matching days from the matching 
     #replicates to the data table inv_tmp
-    inv_tmp = inv_tmp %>% left_join( select( res_tmp, replicate_number,day_n,N_res,Ndiff_res),
-     by= (c( "day_n" = "day_n", "replicate_number"="replicate_number" )) )
-    res_tmp = res_tmp %>% left_join( select( inv_tmp, replicate_number,day_n,N_inv,Ndiff_inv),
+    inv_tmp = inv_tmp %>% left_join( 
+      select( res_tmp, replicate_number, day_n, zooplankton_length_cm_res, N_res, Ndiff_res),
+      by= (c( "day_n" = "day_n", "replicate_number"="replicate_number" )) )
+    res_tmp = res_tmp %>% left_join( 
+       select( inv_tmp, replicate_number,day_n, zooplankton_length_cm_inv, N_inv, Ndiff_inv),
        by= (c( "day_n" = "day_n", "replicate_number"="replicate_number" )) )
     res_tmp$N_inv[is.na(res_tmp$N_inv)] = 0 #Replace NAs with 0  
 
@@ -176,6 +196,20 @@ for (i in 1:2) {
       mydata_diff[,u_res] = mydata_res$Ndiff_res
       out1_diff[index1] = list(as.matrix(na.exclude(mydata_diff)))
       
+      #Algal consumption data
+      mydata_alg = matrix(0,dim(mydata_res)[1],nspp)
+      colnames(mydata_alg) = invader
+      mydata_alg[,u_invader] = mydata_res$Ndiff_alg
+      mydata_alg[,u_res] = mydata_res$Ndiff_alg
+      out1_alg[index1] = list(as.matrix(na.exclude(mydata_alg)))
+      
+      #Body size
+      mydata_bs = matrix(0,dim(mydata_res)[1],nspp)
+      colnames(mydata_bs) = invader
+      mydata_bs[,u_invader] = mydata_res$zooplankton_length_cm_res
+      mydata_bs[,u_res] = mydata_res$zooplankton_length_cm_res
+      out1_bs[index1] = list(as.matrix(na.exclude(mydata_bs)))
+      
 
     } else if (dim(res_tmp)[1] <=0  ){
       mydata_inv = subset(inv_tmp, day_n >= inv_day  )
@@ -195,6 +229,23 @@ for (i in 1:2) {
       mydata_diff[,u_invader] = mydata_inv$Ndiff_inv
       mydata_diff[,u_res] = mydata_inv$Ndiff_res
       out1_diff[index1] = list(as.matrix(na.exclude(mydata_diff)))
+      
+      #Algal consumption data
+      mydata_inv$Ndiff_alg[is.na(mydata_inv$Ndiff_alg)] = 0 #Replace NAs with 0 
+      mydata_alg = matrix(0,dim(mydata_inv)[1],nspp)
+      colnames(mydata_alg) = invader
+      mydata_alg[,u_invader] = mydata_inv$Ndiff_alg
+      mydata_alg[,u_res] = mydata_inv$Ndiff_alg
+      out1_alg[index1] = list(as.matrix(na.exclude(mydata_alg)))
+      
+      #Body size
+      mydata_inv$zooplankton_length_cm[is.na(mydata_inv$zooplankton_length_cm)] = 0 #Replace NAs with 0 
+      mydata_bs = matrix(0,dim(mydata_inv)[1],nspp)
+      colnames(mydata_bs) = invader
+      mydata_bs[,u_invader] = mydata_inv$zooplankton_length_cm_inv
+      mydata_bs[,u_res] = mydata_inv$zooplankton_length_cm_inv
+      out1_bs[index1] = list(as.matrix(na.exclude(mydata_bs)))
+      
 
 
     } else {
@@ -215,6 +266,22 @@ for (i in 1:2) {
       mydata_diff[,u_res] = mydata_inv$Ndiff_res
       out1_diff[index1] = list(as.matrix(na.exclude(mydata_diff)))
       
+      #Algal consumption data
+      mydata_alg = matrix(0,dim(mydata_inv)[1],nspp)
+      colnames(mydata_alg) = invader
+      mydata_alg[,u_invader] = mydata_inv$Ndiff_alg
+      mydata_alg[,u_res] = mydata_inv$Ndiff_alg
+      out1_alg[index1] = list(as.matrix(na.exclude(mydata_alg)))
+      
+      #Body size
+      mydata_bs = matrix(0,dim(mydata_inv)[1],nspp)
+      colnames(mydata_bs) = invader
+      mydata_bs[,u_invader] = mydata_inv$zooplankton_length_cm_inv
+      mydata_bs[,u_res] = mydata_inv$zooplankton_length_cm_res
+      out1_bs[index1] = list(as.matrix(na.exclude(mydata_bs)))
+      
+
+
     }
     
     #=============================================================================
@@ -254,6 +321,13 @@ for (i in 1:2) {
     #=============================================================================
     te_web[index1] = list( get_te_web( pop_ts = floor(f1*out1[[index1]][nt1:nt2,]), 
       k=k) )
+
+    #=============================================================================
+    # This function gives:
+    # aiE_web    The AI of the entire ensemble, treated as a single time series. 
+    #=============================================================================
+    aiE_web[index1] = list( get_ais (  series1 = floor(f1*out1[[index1]][nt1:nt2,]), 
+      k=k, ensemble = TRUE)    )
 
   }
 }
@@ -483,6 +557,7 @@ ggplot()+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 ggsave("./pop_localAI_plot1.pdf", width = 8, height = 10)
 
+#=============================================================================
 #Transfer entropy vs. number of individuals 
 ggplot()+ 
   geom_point(data = te_out_all, aes(x = te, y = out1, color = interaction(group,"TE"), group = interaction(species,group)))+
@@ -497,6 +572,98 @@ ggplot()+
 ggsave("./pop_localTE_plot1.pdf", width = 8, height = 10)
 
 
+#=============================================================================
+#Ensemble active information and algal consumption: 
+ai_alg_all = data.frame( matrix(ncol = 6,nrow=0) ) 
+colnames(ai_alg_all) = c("temp", "group", "time", "species", "aiE", "out1_alg")
+for(w in 2:(ntreatments)) {
+  
+
+  #First half of the treatments: 
+  k=2
+  nt1 = k-1
+  if(nrow(out1_alg[[w]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1_alg[[w]])[1]-1
+  din = nt2-nt1+1
+
+  ai_comb = aiE_web[[w]]$local[1:din,]
+  out1_alg_comb = out1_alg[[w]][nt1:nt2,]/(0.5*max(out1_alg[[w]][nt1:nt2,] ) ) #Scale by max? 
+  #Turn ai into a data frame with headings matching ai_all
+  colnames(ai_comb) = invader
+  ai_comb=data.frame(ai_comb)
+  ai_comb$temp = temps[w] #Add temperature 
+  ai_comb$group = c("dia")
+  ai_comb=ai_comb%>%mutate(time=row_number())
+  ai_temp = ai_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=aiE, invader)
+
+  #Turn out1_alg into a data frame with headings matching ai_all
+  colnames(out1_alg_comb) = invader
+  out1_alg_comb=data.frame(out1_alg_comb)
+  out1_alg_comb$temp = temps[w] #Add temperature 
+  out1_alg_comb$group = c("dia")
+  out1_alg_comb=out1_alg_comb%>%mutate(time=row_number())
+  out1_alg_temp = out1_alg_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1_alg, invader)
+  
+  all_temp1 = ai_temp%>% left_join(out1_alg_temp,all.x=T)
+
+  #Second half of the treatments: 
+  w2 = w+ntreatments
+  k=2
+  nt1 = k-1
+  if(nrow(out1_alg[[w2]])<=k){ k = 1; nt1=k}
+  nt2 = dim(out1_alg[[w2]])[1]-1
+  din = nt2-nt1+1
+
+  ai_comb = di_web[[w2]]$ai_local[1:din,]
+  out1_alg_comb = out1_alg[[w2]][nt1:nt2,]/(0.5*max(out1_alg[[w2]][nt1:nt2,] ) ) #Scale by max? 
+ 
+  #Turn ai into a data frame with headings matching ai_all
+  colnames(ai_comb) = invader
+  ai_comb=data.frame(ai_comb)
+  ai_comb$temp = temps[w] #Add temperature 
+  ai_comb$group = c("daph")
+  ai_comb=ai_comb%>%mutate(time=row_number())
+  ai_temp = ai_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=aiE, invader)
+
+  #Turn out1_alg into a data frame with headings matching ai_all
+  colnames(out1_alg_comb) = invader
+  out1_alg_comb=data.frame(out1_alg_comb)
+  out1_alg_comb$temp = temps[w] #Add temperature 
+  out1_alg_comb$group = c("daph")
+  out1_alg_comb=out1_alg_comb%>%mutate(time=row_number())
+  out1_alg_temp = out1_alg_comb%>%
+    mutate(time=row_number())%>%
+      gather(key=species, value=out1_alg, invader)
+  
+  all_temp2 = ai_temp%>% left_join(out1_alg_temp,all.x=T)
+
+  all_temp = all_temp1%>% full_join(all_temp2)
+
+  ai_alg_all=rbind(ai_alg_all,all_temp)
+      
+}
+
+#Make the plot
+ggplot()+ 
+  geom_point(data = ai_alg_all, aes(x = ai, y = out1_alg, color = interaction(group,"AI"), group = interaction(species,group)))+
+  #scale_y_continuous(sec.axis = sec_axis(~.*5, name = "AI"))+
+  facet_grid(temp~species)+
+  #scale_y_log10()+
+  theme_bw()+
+  #scale_color_manual(values = c("dodgerblue1", "red1"), name = "")+
+  xlab("active information (bits) ")+
+  ylab("1st derivative (individuals)")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./alg_localAI_plot1.pdf", width = 8, height = 10)
+
+
+#=============================================================================
 #Active information and slope of population growth curve
 ai_outdiff_all = data.frame( matrix(ncol = 6,nrow=0) ) 
 colnames(ai_outdiff_all) = c("temp", "group", "time", "species", "ai", "out1_diff")
@@ -587,6 +754,7 @@ ggplot()+
 ggsave("./diff_localAI_plot1.pdf", width = 8, height = 10)
 
 
+#=============================================================================
 #Transfer entropy and population dynamics
 te_outdiff_all = data.frame( matrix(ncol = 6,nrow=0) ) 
 colnames(te_outdiff_all) = c("temp", "group", "time", "species", "te", "out1_diff")
