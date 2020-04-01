@@ -5,3 +5,5 @@ figures/
 .DS_Store
 *.csv
 .bash_profile
+*.numbers
+*.pdf
