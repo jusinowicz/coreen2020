@@ -191,109 +191,23 @@ for (i in 1:nmesos) {
   #unsuccesful: 
   if(dim(inv_tmp)[1] <=0  ){
     
+    #New population, diff,algal, and body size data
     mydata_res = subset(res_tmp, day_n >= inv_day  )
-    mydata_res$Ndiff_res[is.na(mydata_res$Ndiff_res)] = 0 #Replace NAs with 0 
-
-    #Population data
-    mydata = matrix(0,dim(mydata_res)[1],nspp)
-    colnames(mydata) = rspecies
-    mydata[,i_sp] = 0
-    mydata[,r_sp] = mydata_res$N_res
-    out1[index1] = list(as.matrix(na.exclude(mydata)))
-    
-    #Population diff data
-    mydata_diff = matrix(0,dim(mydata_res)[1],nspp)
-    colnames(mydata_diff) = rspecies
-    mydata_diff[,i_sp] = 0
-    mydata_diff[,r_sp] = mydata_res$Ndiff_res
-    out1_diff[index1] = list(as.matrix(na.exclude(mydata_diff)))
-    
-    #Algal consumption data
-    mydata_alg = matrix(0,dim(mydata_res)[1],nspp)
-    colnames(mydata_alg) = rspecies
-    mydata_alg[,i_sp] = mydata_res$Ndiff_alg
-    mydata_alg[,r_sp] = mydata_res$Ndiff_alg
-    out1_alg[index1] = list(as.matrix(na.exclude(mydata_alg)))
-    
-    #Body size
-    mydata_bs = matrix(0,dim(mydata_res)[1],nspp)
-    colnames(mydata_bs) = rspecies
-    mydata_bs[,i_sp] = mydata_res$zooplankton_length_cm_res
-    mydata_bs[,r_sp] = mydata_res$zooplankton_length_cm_res
-    out1_bs[index1] = list(as.matrix(na.exclude(mydata_bs)))
-    
+    mydata_res$N_inv = 0
+    out1[[index1]] = mydata_res[!is.na(mydata_res$N_res), ]
+  
 
   } else if (dim(res_tmp)[1] <=0  ){
+    #New population, diff,algal, and body size data
     mydata_inv = subset(inv_tmp, day_n >= inv_day  )
-
-    #Population data
-    mydata_inv$N_res[is.na(mydata_inv$N_res)] = 0 #Replace NAs with 0 
-    mydata = matrix(0,dim(mydata_inv)[1],nspp)
-    colnames(mydata) = rspecies
-    mydata[,i_sp] = mydata_inv$N_inv
-    mydata[,r_sp] = mydata_inv$N_res
-    out1[index1] = list(as.matrix(na.exclude(mydata)))
-
-    #Population diff data
-    mydata_inv$Ndiff_res[is.na(mydata_inv$Ndiff_res)] = 0 #Replace NAs with 0 
-    mydata_diff = matrix(0,dim(mydata_inv)[1],nspp)
-    colnames(mydata_diff) = rspecies
-    mydata_diff[,i_sp] = mydata_inv$Ndiff_inv
-    mydata_diff[,r_sp] = mydata_inv$Ndiff_res
-    out1_diff[index1] = list(as.matrix(na.exclude(mydata_diff)))
-    
-    #Algal consumption data
-    mydata_inv$Ndiff_alg[is.na(mydata_inv$Ndiff_alg)] = 0 #Replace NAs with 0 
-    mydata_alg = matrix(0,dim(mydata_inv)[1],nspp)
-    colnames(mydata_alg) = rspecies
-    mydata_alg[,i_sp] = mydata_inv$Ndiff_alg
-    mydata_alg[,r_sp] = mydata_inv$Ndiff_alg
-    out1_alg[index1] = list(as.matrix(na.exclude(mydata_alg)))
-    
-    #Body size
-    mydata_inv$zooplankton_length_cm[is.na(mydata_inv$zooplankton_length_cm)] = 0 #Replace NAs with 0 
-    mydata_bs = matrix(0,dim(mydata_inv)[1],nspp)
-    colnames(mydata_bs) = rspecies
-    mydata_bs[,i_sp] = mydata_inv$zooplankton_length_cm_inv
-    mydata_bs[,r_sp] = mydata_inv$zooplankton_length_cm_inv
-    out1_bs[index1] = list(as.matrix(na.exclude(mydata_bs)))
-    
-
+    mydata_inv$N_res = 0
+    out1[[index1]] = mydata_inv[!is.na(mydata_res$N_inv), ]
 
   } else {
-
+    #New population, diff,algal, and body size data
     mydata_inv = subset(inv_tmp, day_n >= inv_day  )
-
-    #Population data
-    mydata = matrix(0,dim(mydata_inv)[1],nspp)
-    colnames(mydata) = rspecies
-    mydata[,i_sp] = mydata_inv$N_inv
-    mydata[,r_sp] = mydata_inv$N_res
-    out1[index1] = list(as.matrix(na.exclude(mydata)))
-
-    #Population diff data
-    mydata_diff = matrix(0,dim(mydata_inv)[1],nspp)
-    colnames(mydata_diff) = rspecies
-    mydata_diff[,i_sp] = mydata_inv$Ndiff_inv
-    mydata_diff[,r_sp] = mydata_inv$Ndiff_res
-    out1_diff[index1] = list(as.matrix(na.exclude(mydata_diff)))
-    
-    #Algal consumption data
-    mydata_alg = matrix(0,dim(mydata_inv)[1],nspp)
-    colnames(mydata_alg) = rspecies
-    mydata_alg[,i_sp] = mydata_inv$Ndiff_alg
-    mydata_alg[,r_sp] = mydata_inv$Ndiff_alg
-    out1_alg[index1] = list(as.matrix(na.exclude(mydata_alg)))
-    
-    #Body size
-    mydata_bs = matrix(0,dim(mydata_inv)[1],nspp)
-    colnames(mydata_bs) = rspecies
-    mydata_bs[,i_sp] = mydata_inv$zooplankton_length_cm_inv
-    mydata_bs[,r_sp] = mydata_inv$zooplankton_length_cm_res
-    out1_bs[index1] = list(as.matrix(na.exclude(mydata_bs)))
-    
-
-
+    out1[[index1]] = mydata_inv[!is.na(mydata_inv$N_inv) & 
+      !is.na(mydata_inv$N_res) , ]
   } 
   
   #=============================================================================
@@ -314,16 +228,17 @@ for (i in 1:nmesos) {
   #=============================================================================
   #Set k, the block size: 
   k=2
-  if(nrow(out1[[index1]])<=k){ k = 1}
-  #
-
+  #Get the populations of both species
+  pop_ts = floor(f1*out1[[index1]][c("N_res","N_inv")])
+  
   nt1 = 1
-  nt2 = dim(out1[[index1]])[1]
+  nt2 = dim(pop_ts)[1]
+  if(nt2 <=k){ k = 1}
 
   if(nt1 != nt2) { 
+
     f1 = 1 #scaling factor
-    di_web[index1] = list(get_info_dynamics(pop_ts = floor(f1*out1[[index1]][nt1:nt2,]), 
-      k=k,with_blocks=TRUE))
+    di_web[index1] = list(get_info_dynamics(pop_ts = pop_ts , k=k,with_blocks=TRUE))
 
     ## This code takes the population time-series counts output by the ODEs and 
     ## calculates the average Transfer Entropy from each species to every other 
@@ -333,23 +248,41 @@ for (i in 1:nmesos) {
     # This function gives:
     # te_web    Average transfer entropy per species as a pairwise matrix
     #=============================================================================
-    te_web[index1] = list( get_te_web( pop_ts = floor(f1*out1[[index1]][nt1:nt2,]), 
-      k=k) )
+    te_web[index1] = list( get_te_web( pop_ts = pop_ts, k=k) )
 
     #=============================================================================
     # This function gives:
     # aiE_web    The AI of the entire ensemble, treated as a single time series. 
     #=============================================================================
-    aiE_web[index1] = list( get_ais (  series1 = floor(f1*out1[[index1]][nt1:nt2,]), 
-      k=k, ensemble = TRUE)    )
+    aiE_web[index1] = list( get_ais (  series1 = pop_ts, k=k, ensemble = TRUE)    )
+
+    #=============================================================================  
+    #Build these back out into a data frame that includes all of the mesocosm,
+    #treatment, and species information. 
+
+    #Add the DIT to the data frames. There will be 11 new columns. 
+    DIT_tmp = matrix(0,nt2,11)
+    ncnames = c("N_res","N_inv","aiE","te1","te2","ee1","ee2","ai1","ai2","si1","si2")
+    DIT_tmp[,1:2] = as.matrix(pop_ts)
+    DIT_tmp[(k+1):nt2,3] = aiE_web[[index1]]$local
+    DIT_tmp[(k+1):nt2,4:5] = di_web[[index1]]$te_local
+    DIT_tmp[(k*2):nt2,6:7] = di_web[[index1]]$ee_local
+    DIT_tmp[(k+1):nt2,8:9] = di_web[[index1]]$ai_local
+    DIT_tmp[(k+1):nt2,10:11] = di_web[[index1]]$si_local
+    colnames(DIT_tmp) = ncnames
+    DIT_tmp = as.data.frame(DIT_tmp) 
+    out1[[index1]] = out1[[index1]] %>% left_join(DIT_tmp)
+
   }
 
-  #Build these back out into a data frame that includes all of the mesocosm,
-  #treatment, and species information. 
+ 
 
-  
-  
+
 }
+
+#Take all of the new data and combine it into one data frame: 
+
+bind_rows(list_of_dataframes, .id = "column_label")
 
 #=============================================================================
 # Plot of complexity (Excess Entropy) against ?????Cost????? per temperature
