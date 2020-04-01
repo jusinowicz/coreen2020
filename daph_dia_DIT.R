@@ -20,6 +20,8 @@
 #=============================================================================
 library(tidyverse)
 library(lubridate)
+library(mgcv)
+library(gamm4)
 library(fields)
 source("./functions/info_theory_functions.R")
 #=============================================================================
@@ -39,7 +41,7 @@ source("./functions/info_theory_functions.R")
 
 #Preprocessing m1_...
 m1=read.csv(file= "tequila_master_data.csv") 
-m1$date = ymd(m1_data_long$date) #Fix date
+m1$date = ymd(m1$date) #Fix date
 
 #There are certain days with data across individuals from a 
 #mesocosm. This is to take all of those measurements and combine
@@ -47,13 +49,15 @@ m1$date = ymd(m1_data_long$date) #Fix date
 #use the average: 
 cols2group=colnames(m1)[c(2:10,12,15,17:18)] 
 cols2summarize = colnames(m1)[c(14,16)]
-treats = unique(m1_data_long$mesocosm_id)
+treats = unique(m1$mesocosm_id)
 m1_data_long = m1 %>% 
      group_by_at(cols2group) %>%
      summarise_at(cols2summarize, .funs= mean)
+m1_data_long= ungroup(m1_data_long)
+m1_data_long$algae_abundance = as.numeric(m1_data_long$algae_abundance)
 
 
-algae1 = read.csv(file= "algae_export.csv") 
+algae1 = read.csv(file= "algae_export.csv")[,1:3]
 #Fix dates in algae:
 algae1$date =  parse_date_time(algae1$date, "md")
 year(algae1$date) [year(algae1$date) == 0000] = 2019
@@ -69,6 +73,27 @@ m1_data_long= m1_data_long %>%
 colnames(m1_data_long)[colnames(m1_data_long) == "zooplankton_abundance"] = "N"
 
 #write.csv (file="tequila_master_data_algae.csv", m1_data_long)
+
+#=============================================================================
+#Fit a GAMM to the data to predict algal abundance on the basis of density per-species, 
+#as a funciton of temperature, with mesocosm_id as a Random Effect
+#=============================================================================
+#Note that the data are fir with the log link function (log transformed) because 
+#values cannot be <0. 
+alg_gam = gam( algae_abundance ~ s(N)+s(temperature,k=5)+s(species, bs="re")+s(mesocosm_id,bs="re"),
+  family=Gamma(link='log'), data=m1_data_long )
+
+#Use the fitted GAMM to interpolate NAs for algal abundance in the data set
+alg_newdata = subset(m1_data_long, is.na(algae_abundance) )
+alg_replace = as.vector(predict.gam(alg_gam, newdata=alg_newdata,type= "response") )
+alg_newdata$algae_abundance = alg_replace
+m1_data_long$algae_abundance[is.na(m1_data_long$algae_abundance)] = alg_newdata$algae_abundance
+
+m1_data_long %>% 
+ggplot(aes(x = algae_abundance, y = N, color = species, group = interaction(species,replicate_number)))+
+  geom_point()
+ggsave("./algae_projection1.pdf", width = 8, height = 10)
+
 #=============================================================================
 #Plot the data
 #=============================================================================
@@ -84,7 +109,7 @@ m1_data_long %>%
   xlab("day")+
   ylab("population size")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-ggsave("./Downloads/Coreen_plot.pdf", width = 8, height = 10)
+ggsave("./Coreen_plot.pdf", width = 8, height = 10)
 Collapse
 
 #=============================================================================
@@ -147,7 +172,7 @@ for (i in 1:nmesos) {
      
   #Add a new column for the change in algal biomass
   res_tmp = res_tmp %>%
-      mutate(Ndiff_alg = (algae_abundance -lag(algae_cells_mL)) )  #"lead" lines up the result
+      mutate(Ndiff_alg = (lag(algae_cells_mL)- algae_abundance ) )  #"lead" lines up the result
 
   res_tmp$Ndiff_res[res_tmp$day_n == max(res_tmp$day_n )] =NA #Remove last day
   res_tmp = res_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step
@@ -169,7 +194,7 @@ for (i in 1:nmesos) {
   
   #Add a new column for the change in algal biomass
   inv_tmp = inv_tmp %>%
-      mutate(Ndiff_alg = (algae_abundance -lag(algae_cells_mL)) )  #"lead" lines up the result
+      mutate(Ndiff_alg = (lag(algae_cells_mL)- algae_abundance) )  #"lead" lines up the result
 
   inv_tmp$Ndiff_inv[inv_tmp$day_n == max(inv_tmp$day_n )] =NA #Remove last day
   inv_tmp = inv_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step 
@@ -192,20 +217,23 @@ for (i in 1:nmesos) {
   if(dim(inv_tmp)[1] <=0  ){
     
     #New population, diff,algal, and body size data
-    mydata_res = subset(res_tmp, day_n >= inv_day  )
+    #mydata_res = subset(res_tmp, day_n >= inv_day  ) #Only days after invasion
+    mydata_res = res_tmp
     mydata_res$N_inv = 0
     out1[[index1]] = mydata_res[!is.na(mydata_res$N_res), ]
   
 
   } else if (dim(res_tmp)[1] <=0  ){
     #New population, diff,algal, and body size data
-    mydata_inv = subset(inv_tmp, day_n >= inv_day  )
+    #mydata_inv = subset(inv_tmp, day_n >= inv_day  )#Only days after invasion
+    mydata_inv = inv_tmp
     mydata_inv$N_res = 0
     out1[[index1]] = mydata_inv[!is.na(mydata_res$N_inv), ]
 
   } else {
     #New population, diff,algal, and body size data
-    mydata_inv = subset(inv_tmp, day_n >= inv_day  )
+    #mydata_inv = subset(inv_tmp, day_n >= inv_day  )#Only days after invasion
+    mydata_inv= inv_tmp
     out1[[index1]] = mydata_inv[!is.na(mydata_inv$N_inv) & 
       !is.na(mydata_inv$N_res) , ]
   } 
@@ -229,6 +257,7 @@ for (i in 1:nmesos) {
   #Set k, the block size: 
   k=2
   #Get the populations of both species
+  f1=1 #scaling term
   pop_ts = floor(f1*out1[[index1]][c("N_res","N_inv")])
   
   nt1 = 1
@@ -281,15 +310,28 @@ for (i in 1:nmesos) {
 }
 
 #Take all of the new data and combine it into one data frame: 
+m1_DIT = bind_rows(out1, .id = "column_label")
 
-bind_rows(list_of_dataframes, .id = "column_label")
+
 
 #=============================================================================
 # Plot of complexity (Excess Entropy) against ?????Cost????? per temperature
 # treatment. Meant to look for something similar to Moore's curves of 
 # integrated circuit complexity vs. manufacturing cost from 1965 paper. 
 #=============================================================================
-
+m1_DIT %>% 
+  ungroup() %>% 
+  filter(!is.na(N)) %>% 
+  ggplot(aes(x = aiE, y =Ndiff_alg/N, color = species, group = interaction(species,replicate_number)))+
+  geom_point()+
+  facet_grid(temperature~species)+
+  #scale_y_log10()+
+  theme_bw()+
+  scale_color_manual(values = c("dodgerblue1", "red1"), name = NA)+
+  xlab("Active information (bits) ")+
+  ylab("population size")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./aiE_algal1.pdf", width = 8, height = 10)
 
 
 
