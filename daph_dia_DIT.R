@@ -90,7 +90,7 @@ alg_newdata$algae_abundance = alg_replace
 m1_data_long$algae_abundance[is.na(m1_data_long$algae_abundance)] = alg_newdata$algae_abundance
 
 m1_data_long %>% 
-ggplot(aes(x = algae_abundance, y = N, color = species, group = interaction(species,replicate_number)))+
+ggplot(aes(y = algae_abundance, x = N, color = species, group = interaction(species,replicate_number)))+
   geom_point()
 ggsave("./algae_projection1.pdf", width = 8, height = 10)
 
@@ -312,7 +312,37 @@ for (i in 1:nmesos) {
 #Take all of the new data and combine it into one data frame: 
 m1_DIT = bind_rows(out1, .id = "column_label")
 
+#=============================================================================
+#Fit a GAMM to the data to predict algal abundance on the basis of density per-species, 
+#as a funciton of temperature, with mesocosm_id as a Random Effect
+#=============================================================================
 
+#Loop through temperature treatments
+for(m in 1:5) { 
+  for( s in 1:2) { 
+    m1_DIT_tmp = subset ( )
+
+
+  }
+
+N_tmp = 0:max(m1_DIT$N)
+aiE_tmp = seq(0,max(m1_DIT$aiE),by= 0.1)
+DIT_newdata = crossing(N=N_tmp, species=rspecies, temperature = temps,mesocosm_id= 1,aiE=aiE_tmp)
+
+#Note that the data are fir with the log link function (log transformed) because 
+#values cannot be <0. 
+aiE_gam = gam( N ~ s(aiE,k=5)+s(temperature,k=5)+s(species, bs="re")+s(mesocosm_id,bs="re"),
+  data=m1_DIT )
+
+#Use the fitted GAMM to interpolate NAs for algal abundance in the data set
+N_plot = as.vector(predict.gam(aiE_gam, newdata=DIT_newdata, exclude = "s(mescosom_id)", type= "response") )
+
+aiEp =  cbind(DIT_newdata, N_plot)
+aiEp %>% 
+  #filter(temperature == temps[1])%>%
+  ggplot(aes(x = aiE, y =N_plot, color = species))+
+  geom_point()+
+  facet_grid(temperature~species)
 
 #=============================================================================
 # Plot of complexity (Excess Entropy) against ?????Cost????? per temperature
@@ -322,16 +352,16 @@ m1_DIT = bind_rows(out1, .id = "column_label")
 m1_DIT %>% 
   ungroup() %>% 
   filter(!is.na(N)) %>% 
-  ggplot(aes(x = aiE, y =Ndiff_alg/N, color = species, group = interaction(species,replicate_number)))+
+  ggplot(aes(x = aiE, y =N, color = species, group = interaction(species,replicate_number)))+
   geom_point()+
   facet_grid(temperature~species)+
   #scale_y_log10()+
   theme_bw()+
   scale_color_manual(values = c("dodgerblue1", "red1"), name = NA)+
   xlab("Active information (bits) ")+
-  ylab("population size")+
+  ylab("Algal consumption per individual")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-ggsave("./aiE_algal1.pdf", width = 8, height = 10)
+ggsave("./aiE_algalperN1.pdf", width = 8, height = 10)
 
 
 
