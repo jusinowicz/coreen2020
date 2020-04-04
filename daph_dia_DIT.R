@@ -323,13 +323,14 @@ m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
 #Fit GAMMs to the DIT results, grouping everything into one model with 
 #species and mesocosm as random effects.Fit fit the hump-shaped 
 #relationships between the DIT and the rate of algal consumption per individual. 
+#The next plot is the better one 
 #=============================================================================
 N_tmp = 0:max(m1_DIT$N)
 aiE_tmp = seq(0,max(m1_DIT$aiE),by= 0.1)
-DIT_newdata = crossing(N=N_tmp, species=rspecies, temperature = temps,mesocosm_id= 1,aiE=aiE_tmp)
+DIT_newdata = crossing(species=rspecies, temperature = temps, mesocosm_id= 1,aiE=aiE_tmp)
 
 #Fit the GAMM
-aiE_gam = gam( N ~ s(aiE,k=5)+s(temperature,k=5)+s(species, bs="re")+s(mesocosm_id,bs="re"),
+aiE_gam = gam( alg_per_N ~ s(aiE,k=5)+s(temperature,k=5)+s(species, bs="re")+s(mesocosm_id,bs="re"),
   data=m1_DIT )
 
 #Use the fitted GAMM to plot the resulting relationships
@@ -338,7 +339,8 @@ aiEp =  cbind(DIT_newdata, N_plot)
 aiEp %>% 
   #filter(temperature == temps[1])%>%
   ggplot(aes(x = aiE, y =N_plot, color = species))+
-  geom_point()+
+  geom_line()+
+  geom_point(data= m1_DIT, mapping= aes(x = aiE, y =alg_per_N, color = species) ) +
   facet_grid(temperature~species)
 
 #=============================================================================
@@ -362,7 +364,8 @@ for(t in 1:6) {
   m1_DIT_daph_tmp = subset (m1_DIT, temperature == temps[t] & species == rspecies[1] )
   
   #Fit the GAMM
-  aiE_daph_gam = gam( alg_per_N ~ s(aiE,k=3)+s(mesocosm_id,bs="re"), data=m1_DIT_daph_tmp  )
+  aiE_daph_gam = gam( alg_per_Ndiff~ s(aiE,k=3)+s(mesocosm_id,bs="re"), data=m1_DIT_daph_tmp  )
+  
   m1_DIT_daph [[t]] = aiE_daph_gam
 
   #Create the dummy data set for plotting
@@ -383,14 +386,12 @@ for(t in 1:6) {
   geom_point(data= m1_DIT_daph_tmp, mapping= aes(x = aiE, y =alg_per_N, color = species) )
 
 
-
-
   #########
   #Diaphanasoma
   m1_DIT_dia_tmp = subset (m1_DIT, temperature == temps[t] & species == rspecies[2] )
 
   #Fit the GAMM
-  tryCatch( {aiE_dia_gam = gam( alg_per_N ~ s(aiE,k=3)+s(mesocosm_id,bs="re"), data=m1_DIT_dia_tmp  )
+  tryCatch( {aiE_dia_gam = gam( alg_per_Ndiff~ s(aiE,k=3)+s(mesocosm_id,bs="re"), data=m1_DIT_dia_tmp  )
   m1_DIT_dia [[t]] = aiE_dia_gam}, error = function(e){})
 
   #Create the dummy data set for plotting
@@ -417,12 +418,12 @@ m1_DIT_plot = rbind(m1_daph_plot, m1_dia_plot)
 
 ggplot(m1_DIT_plot, aes(x = aiE, y =N_plot, color = species) ) + 
   geom_line( )+ facet_grid(temperature~species)+ 
-  geom_point(data= m1_DIT, mapping= aes(x = aiE, y =alg_per_N, color = species) )+
+  geom_point(data= m1_DIT, mapping= aes(x = aiE, y =alg_per_Ndiff, color = species) )+
   facet_grid(temperature~species)+
   xlab("Active information (bits) ")+
   ylab("Algal consumption per individual")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-ggsave("./aiE_algalperN1.pdf", width = 8, height = 10)
+ggsave("./aiE_algalperNdiff1.pdf", width = 8, height = 10)
 
 
 #=============================================================================
