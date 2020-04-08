@@ -199,47 +199,49 @@ for(t in 1:6) {
   # cl_dia[[t]] = gam( Adiff ~  N +s(mesocosm_id,bs="re"), famly=binomial, data=dia_tmp)
 
   #Use NLS to fit a Type 2 (saturating) response
-  alg2 = formula (Adiff ~  N*b/(c1+b*)  )
-  m1 = lm(I(log(N+1))~I((Adiff)), data = daph_tmp ) 
+  alg2 = formula (Adiff ~  algae_start/(1+c1*exp(b1*N) ) )
+
+  m1 = lm(I(log(algae_start/Adiff-1))~I(N), data = daph_tmp ) 
   cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
-    start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
+    start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
     control=nls.control(maxiter = 1000), trace=T )
 
-  m1 = lm(I(log(N+1))~I((Adiff)), data = dia_tmp ) 
+  m1 = lm(I(log(algae_start/Adiff-1))~I(N), data = dia_tmp ) 
   cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
-    start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
+    start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
     control=nls.control(maxiter = 1000), trace=T )
 
-  plot((daph_tmp$Adiff),(daph_tmp$N))
-  s=seq(min(daph_tmp$Adiff),max(daph_tmp$Adiff),10 )
-  lines(s, predict(cl_daph[[t]], list(Adiff= s ) ), col = "green")
+  plot((daph_tmp$N),(daph_tmp$Adiff))
+  #plot((daph_tmp$N),log(algae_start/daph_tmp$Adiff-1) ) 
+  s=seq(min(daph_tmp$N),max(daph_tmp$N),1 )
+  lines(s, predict(cl_daph[[t]], list( N = s ) ), col = "green")
 
-  plot((dia_tmp$Adiff),(dia_tmp$N ) )
-  s=seq(min(dia_tmp$Adiff),max(dia_tmp$Adiff),10 )
-  lines(s, predict(cl_dia[[t]], list(Adiff= s ) ), col = "green")
-
+  plot((dia_tmp$N),(dia_tmp$Adiff))
+  #plot((daph_tmp$N),log(algae_start/daph_tmp$Adiff-1) ) 
+  s=seq(min(dia_tmp$N),max(dia_tmp$N),1 )
+  lines(s, predict(cl_dia[[t]], list( N = s ) ), col = "green")
 
   
   #The reverse relationship: 
   #alg2 = formula (Adiff ~ b/(1+b*N) )
-  alg2 = formula (N ~  exp(b1*Adiff+c1)  )
-  m1 = lm(I(log(N+1))~I((Adiff)), data = daph_tmp ) 
-  cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
-    start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
-    control=nls.control(maxiter = 1000), trace=T )
+  # alg2 = formula (N ~  exp(b1*Adiff+c1)  )
+  # m1 = lm(I(log(N+1))~I((Adiff)), data = daph_tmp ) 
+  # cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
+  #   start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
+  #   control=nls.control(maxiter = 1000), trace=T )
 
-  m1 = lm(I(log(N+1))~I((Adiff)), data = dia_tmp ) 
-  cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
-    start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
-    control=nls.control(maxiter = 1000), trace=T )
+  # m1 = lm(I(log(N+1))~I((Adiff)), data = dia_tmp ) 
+  # cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
+  #   start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
+  #   control=nls.control(maxiter = 1000), trace=T )
 
-  plot((daph_tmp$Adiff),(daph_tmp$N))
-  s=seq(min(daph_tmp$Adiff),max(daph_tmp$Adiff),10 )
-  lines(s, predict(cl_daph[[t]], list(Adiff= s ) ), col = "green")
+  # plot((daph_tmp$Adiff),(daph_tmp$N))
+  # s=seq(min(daph_tmp$Adiff),max(daph_tmp$Adiff),10 )
+  # lines(s, predict(cl_daph[[t]], list(Adiff= s ) ), col = "green")
 
-  plot((dia_tmp$Adiff),(dia_tmp$N ) )
-  s=seq(min(dia_tmp$Adiff),max(dia_tmp$Adiff),10 )
-  lines(s, predict(cl_dia[[t]], list(Adiff= s ) ), col = "green")
+  # plot((dia_tmp$Adiff),(dia_tmp$N ) )
+  # s=seq(min(dia_tmp$Adiff),max(dia_tmp$Adiff),10 )
+  # lines(s, predict(cl_dia[[t]], list(Adiff= s ) ), col = "green")
 
 
 }
