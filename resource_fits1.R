@@ -45,12 +45,25 @@ year(algae1$date) [year(algae1$date) == 2020 &
     month(algae1$date) > 9  & month(algae1$date) <=12  ] = 2019
 
 algae1$date = ymd (algae1$date)
+algae1$algae_cells_mL[is.na(algae1$algae_cells_mL)] = mean(algae1$algae_cells_mL,na.rm=T)
+algae1$algae_mL_media[is.na(algae1$algae_mL_media)] = mean(algae1$algae_mL_media,na.rm=T)
 
 #Join algae to m1_...
 m1_data_long= m1_data_long %>% 
   left_join( algae1) 
 
 colnames(m1_data_long)[colnames(m1_data_long) == "zooplankton_abundance"] = "N"
+
+#Fix NAs in algal abundance
+m1_data_long$algae_cells_mL[is.na(m1_data_long$algae_cells_mL)] = mean(algae1$algae_cells_mL,na.rm=T)
+m1_data_long$algae_mL_media[is.na(m1_data_long$algae_mL_media)] = mean(algae1$algae_mL_media,na.rm=T)
+
+#Fix NA dates. These come up on the half days, so can be replaced with lag of dates
+m1_data_long$N[ is.na(m1_data_long$date)] = lag(m1_data_long$N)[ is.na(m1_data_long$date)]
+m1_data_long$algae_cells_mL[ is.na(m1_data_long$date)] = lag(m1_data_long$algae_cells_mL)[ is.na(m1_data_long$date)]
+#m1_data_long$algae_abundance[ is.na(m1_data_long$date)] = lag(m1_data_long$algae_abundance)[ is.na(m1_data_long$date)]
+m1_data_long$date[ is.na(m1_data_long$date)] = lag(m1_data_long$date)[ is.na(m1_data_long$date)]
+
 
 #=============================================================================
 #Fit a GAMM to the data to predict algal abundance on the basis of density per-species, 
@@ -69,8 +82,8 @@ m1_data_long$algae_abundance[is.na(m1_data_long$algae_abundance)] = alg_newdata$
 
 m1_data_long %>% 
 ggplot(aes(y = algae_abundance, x = N, color = species, group = interaction(species,replicate_number)))+
-  geom_point()
-ggsave("./algae_projection1.pdf", width = 8, height = 10)
+  geom_point()+
+  facet_grid(temperature~species)
 
 #=============================================================================
 #Plot the data
@@ -105,24 +118,39 @@ no_reps = 18 #The number of replicated mesocosms total per resident/invader
 #=============================================================================
 #Fit a model at each treatment level (temperature)
 #=============================================================================
+#Are these effectively consumption rates? 
+m1_data_long %>% 
+ggplot(aes(y =N, x =mean(algae_cells_mL,na.rm=T)- algae_abundance, color = species, group = interaction(species,replicate_number)))+
+  geom_point()+
+  facet_grid(temperature~species)
+
 #Use both the monoculture data and the data for the resident pre-invasion
+# inv_day = 1000
 mesos1 = subset(m1_data_long,species == "daphnia" & invade_monoculture == "monoculture" )
 mesos2 = subset(m1_data_long,species == "daphnia" & invade_monoculture == "dia invade" )
 mesos2 = mesos2[ mesos2$day_n<=inv_day, ]
-mesos_daph = rbind(mesos1,mesos2)
+mesos_daph = mesos1 #rbind(mesos1,mesos2)
 
 mesos1 = subset(m1_data_long,species == "diaphanosoma" & invade_monoculture == "monoculture" )
 mesos2 = subset(m1_data_long,species == "diaphanosoma" & invade_monoculture == "daph invade" )
 mesos2 = mesos2[ mesos2$day_n<=inv_day, ]
-mesos_dia = rbind(mesos1,mesos2)
+mesos_dia = mesos1 #rbind(mesos1,mesos2)
 
 #Fit the resource consumption model as a function of temperature:  
+
 
 
 
 #Fit the resource consumption model per temperature. 
 cl_daph = vector("list", 6)
 cl_dia = vector("list", 6)
+
+cl_daph_plot = vector("list", 6)
+cl_dia_plot = vector("list", 6)
+
+par(mfrow=c(6,2),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
+
+algae_start = mean(m1_data_long$algae_cells_mL,na.rm=T)
 
 for(t in 1:6) { 
 
@@ -133,20 +161,85 @@ for(t in 1:6) {
   #Add the rate of population growth, Ndiff
   daph_tmp = daph_tmp %>%    
             arrange(replicate_number) %>%
-            mutate(Ndiff = lead(N-lag(N),)/lead(day_n-lag(day_n),) ) #"lead" lines up the result 
+            mutate(Ndiff = (N-lag(N))/(day_n-lag(day_n)) ) #"lead" lines up the result 
   daph_tmp$Ndiff[is.infinite(daph_tmp$Ndiff)] = NA
 
   dia_tmp = dia_tmp %>%    
             arrange(replicate_number) %>%
-            mutate(Ndiff = lead(N-lag(N),)/lead(day_n-lag(day_n),) ) #"lead" lines up the result 
+            mutate(Ndiff = (N-lag(N))/(day_n-lag(day_n)) ) #"lead" lines up the result 
   dia_tmp$Ndiff[is.infinite(dia_tmp$Ndiff)] = NA
+
+
+  #Add the rate of algal consumption, Adiff
+  daph_tmp = daph_tmp %>%    
+            arrange(replicate_number) %>%
+            mutate(Adiff = algae_start-algae_abundance)  #"lead" lines up the result 
+            #mutate(Adiff = exp(N*0.01)+algae_abundance )  #"lead" lines up the result 
+  daph_tmp$Adiff[is.infinite(daph_tmp$Adiff)] = NA
+
+  dia_tmp = dia_tmp %>%    
+            arrange(replicate_number) %>%
+            mutate(Adiff = algae_start-algae_abundance)#"lead" lines up the result 
+  dia_tmp$Adiff[is.infinite(dia_tmp$Adiff)] = NA
+
+  #For NLS: Remove NA entries! 
+  daph_tmp = daph_tmp[!is.na(daph_tmp$Adiff) & !is.na(daph_tmp$N), ]
+  dia_tmp = dia_tmp[!is.na(dia_tmp$Adiff) & !is.na(dia_tmp$N), ]
 
   #The basic MacArthur model is a linear consumption rate so just fit with a GLMM
   # cl_daph[[t]] = gam( Ndiff ~ +s(temperature,k=5)+s(mesocosm_id,bs="re"),family=Gamma(link='log'), data=daph_tmp)
   # cl_dia[[t]] = gam( Ndiff ~ +s(temperature,k=5)+s(mesocosm_id,bs="re"),family=Gamma(link='log'), data=dia_tmp)
+  # plot(daph_tmp$algae_abundance, daph_tmp$N)
+  # plot(dia_tmp$algae_abundance, dia_tmp$N)
 
-  cl_daph[[t]] = gam( Ndiff ~ algae_abundance +s(mesocosm_id,bs="re"), data=daph_tmp)
-  cl_dia[[t]] = gam( Ndiff ~ algae_abundance +s(mesocosm_id,bs="re"), data=dia_tmp)
+  ########################
+  #This works better!!! 
+  #Fit the algal consumption rate instead: 
+  # cl_daph[[t]] = gam( Adiff ~  N+s(mesocosm_id,bs="re"), family=binomial, data=daph_tmp)
+  # cl_dia[[t]] = gam( Adiff ~  N +s(mesocosm_id,bs="re"), famly=binomial, data=dia_tmp)
+
+  #Use NLS to fit a Type 2 (saturating) response
+  alg2 = formula (Adiff ~  N*b/(c1+b*)  )
+  m1 = lm(I(log(N+1))~I((Adiff)), data = daph_tmp ) 
+  cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
+    start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
+    control=nls.control(maxiter = 1000), trace=T )
+
+  m1 = lm(I(log(N+1))~I((Adiff)), data = dia_tmp ) 
+  cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
+    start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
+    control=nls.control(maxiter = 1000), trace=T )
+
+  plot((daph_tmp$Adiff),(daph_tmp$N))
+  s=seq(min(daph_tmp$Adiff),max(daph_tmp$Adiff),10 )
+  lines(s, predict(cl_daph[[t]], list(Adiff= s ) ), col = "green")
+
+  plot((dia_tmp$Adiff),(dia_tmp$N ) )
+  s=seq(min(dia_tmp$Adiff),max(dia_tmp$Adiff),10 )
+  lines(s, predict(cl_dia[[t]], list(Adiff= s ) ), col = "green")
+
+
+  
+  #The reverse relationship: 
+  #alg2 = formula (Adiff ~ b/(1+b*N) )
+  alg2 = formula (N ~  exp(b1*Adiff+c1)  )
+  m1 = lm(I(log(N+1))~I((Adiff)), data = daph_tmp ) 
+  cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
+    start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
+    control=nls.control(maxiter = 1000), trace=T )
+
+  m1 = lm(I(log(N+1))~I((Adiff)), data = dia_tmp ) 
+  cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
+    start=list( b1=(as.numeric(coef(m1)[2])), c1=(as.numeric(coef(m1)[1] ) ) ),
+    control=nls.control(maxiter = 1000), trace=T )
+
+  plot((daph_tmp$Adiff),(daph_tmp$N))
+  s=seq(min(daph_tmp$Adiff),max(daph_tmp$Adiff),10 )
+  lines(s, predict(cl_daph[[t]], list(Adiff= s ) ), col = "green")
+
+  plot((dia_tmp$Adiff),(dia_tmp$N ) )
+  s=seq(min(dia_tmp$Adiff),max(dia_tmp$Adiff),10 )
+  lines(s, predict(cl_dia[[t]], list(Adiff= s ) ), col = "green")
 
 
 }

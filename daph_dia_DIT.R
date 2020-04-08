@@ -65,6 +65,8 @@ year(algae1$date) [year(algae1$date) == 2020 &
     month(algae1$date) > 9  & month(algae1$date) <=12  ] = 2019
 
 algae1$date = ymd (algae1$date)
+algae1$algae_cells_mL[is.na(algae1$algae_cells_mL)] = mean(algae1$algae_cells_mL)
+algae1$algae_mL_media[is.na(algae1$algae_mL_media)] = mean(algae1$algae_mL_media)
 
 #Join algae to m1_...
 m1_data_long= m1_data_long %>% 
@@ -330,7 +332,7 @@ aiE_tmp = seq(0,max(m1_DIT$aiE),by= 0.1)
 DIT_newdata = crossing(species=rspecies, temperature = temps, mesocosm_id= 1,aiE=aiE_tmp)
 
 #Fit the GAMM
-aiE_gam = gam( alg_per_N ~ s(aiE,k=5)+s(temperature,k=5)+s(species, bs="re")+s(mesocosm_id,bs="re"),
+aiE_gam = gam( alg_per_N ~ s(aiE,k=3)+s(temperature,k=5)+s(species, bs="re")+s(mesocosm_id,bs="re"),
   data=m1_DIT )
 
 #Use the fitted GAMM to plot the resulting relationships
