@@ -148,7 +148,7 @@ cl_dia = vector("list", 6)
 cl_daph_plot = vector("list", 6)
 cl_dia_plot = vector("list", 6)
 
-par(mfrow=c(6,2),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
+par(mfrow=c(6,1),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
 
 algae_start = mean(m1_data_long$algae_cells_mL,na.rm=T)
 
@@ -211,15 +211,18 @@ for(t in 1:6) {
     start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
     control=nls.control(maxiter = 1000), trace=T )
 
-  plot((daph_tmp$N),(daph_tmp$Adiff))
+  plot((daph_tmp$N),(daph_tmp$Adiff),col="blue",
+    ylim=c(min( c(min(daph_tmp$Adiff),min(dia_tmp$Adiff)) ), max(c(max(daph_tmp$Adiff),max(dia_tmp$Adiff) ) ) ),
+    xlim=c(min( c(min(daph_tmp$N),min(dia_tmp$N)) ), max(c(max(daph_tmp$N),max(dia_tmp$N) ) ) )
+     )
   #plot((daph_tmp$N),log(algae_start/daph_tmp$Adiff-1) ) 
   s=seq(min(daph_tmp$N),max(daph_tmp$N),1 )
-  lines(s, predict(cl_daph[[t]], list( N = s ) ), col = "green")
+  lines(s, predict(cl_daph[[t]], list( N = s ) ), col = "blue")
 
-  plot((dia_tmp$N),(dia_tmp$Adiff))
+  points((dia_tmp$N),(dia_tmp$Adiff),col="red")
   #plot((daph_tmp$N),log(algae_start/daph_tmp$Adiff-1) ) 
   s=seq(min(dia_tmp$N),max(dia_tmp$N),1 )
-  lines(s, predict(cl_dia[[t]], list( N = s ) ), col = "green")
+  lines(s, predict(cl_dia[[t]], list( N = s ) ), col = "red")
 
   
   #The reverse relationship: 

@@ -366,7 +366,7 @@ for(t in 1:6) {
   m1_DIT_daph_tmp = subset (m1_DIT, temperature == temps[t] & species == rspecies[1] )
   
   #Fit the GAMM
-  aiE_daph_gam = gam( alg_per_Ndiff~ s(aiE,k=3)+s(mesocosm_id,bs="re"), data=m1_DIT_daph_tmp  )
+  aiE_daph_gam = gam( alg_per_N~ s(aiE,k=3)+s(mesocosm_id,bs="re"), data=m1_DIT_daph_tmp  )
   
   m1_DIT_daph [[t]] = aiE_daph_gam
 
@@ -393,7 +393,7 @@ for(t in 1:6) {
   m1_DIT_dia_tmp = subset (m1_DIT, temperature == temps[t] & species == rspecies[2] )
 
   #Fit the GAMM
-  tryCatch( {aiE_dia_gam = gam( alg_per_Ndiff~ s(aiE,k=3)+s(mesocosm_id,bs="re"), data=m1_DIT_dia_tmp  )
+  tryCatch( {aiE_dia_gam = gam( alg_per_N~ s(aiE,k=3)+s(mesocosm_id,bs="re"), data=m1_DIT_dia_tmp  )
   m1_DIT_dia [[t]] = aiE_dia_gam}, error = function(e){})
 
   #Create the dummy data set for plotting
@@ -420,12 +420,23 @@ m1_DIT_plot = rbind(m1_daph_plot, m1_dia_plot)
 
 ggplot(m1_DIT_plot, aes(x = aiE, y =N_plot, color = species) ) + 
   geom_line( )+ facet_grid(temperature~species)+ 
-  geom_point(data= m1_DIT, mapping= aes(x = aiE, y =alg_per_Ndiff, color = species) )+
+  geom_point(data= m1_DIT, mapping= aes(x = aiE, y =alg_per_N, color = species) )+
   facet_grid(temperature~species)+
   xlab("Active information (bits) ")+
   ylab("Algal consumption per individual")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-ggsave("./aiE_algalperNdiff1.pdf", width = 8, height = 10)
+ggsave("./aiE_algalperN.pdf", width = 8, height = 10)
+
+
+# ggplot(m1_DIT_plot, aes(x = aiE, y =N_plot, color=interaction(temperature,species)), 
+#   group=interaction(temperature,species) )  + 
+#   geom_line( )+ facet_grid(.~species)+ 
+#   geom_point(data= m1_DIT, mapping= aes(x = aiE, y =alg_per_N, color=interaction(temperature,species), 
+#   group=interaction(temperature,species)) )+  facet_grid(.~species)+ 
+#   xlab("Active information (bits) ")+
+#   ylab("Algal consumption per individual")+
+#   theme(strip.background = element_rect(colour=NA, fill=NA))
+# ggsave("./aiE_algalperN_same.pdf", width = 8, height = 10)
 
 
 #=============================================================================
