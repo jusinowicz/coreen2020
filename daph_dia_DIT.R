@@ -344,6 +344,59 @@ aiEp %>%
   geom_line()+
   geom_point(data= m1_DIT, mapping= aes(x = aiE, y =alg_per_N, color = species) ) +
   facet_grid(temperature~species)
+#=============================================================================
+#Fit GAMMs to each temperature treatment separately to account for 
+#differing curvature at each treatment level. Fit the hump-shaped 
+#relationships between the DIT and the rate of algal consumption per individual. 
+#============================================================================= 
+#Loop through temperature treatments
+m1_DIT_both = vector("list", 6)
+
+m1_both_plot = NULL
+
+for(t in 1:6) { 
+  
+
+  #Pull out both species for each temperature
+  #########
+  m1_DIT_both_tmp = subset (m1_DIT, temperature == temps[t] )
+  
+  #Fit the GAMM
+  aiE_both_gam = gam( alg_per_N~ s(aiE,k=3)+s(mesocosm_id,bs="re")+s(species,bs="re"), data=m1_DIT_both_tmp  )
+  
+  m1_DIT_both[[t]] = aiE_both_gam
+
+  #Create the dummy data set for plotting
+  N_tmp = 0:max(m1_DIT_both_tmp$alg_per_N,na.rm=T)
+  aiE_tmp = seq(0,max(m1_DIT_both_tmp$aiE,na.rm=T),by= 0.1)
+  DIT_both_newdata = crossing(species=rspecies, temperature = temps[t], 
+      mesocosm_id= 1,aiE=aiE_tmp)
+
+  #Use the fitted GAMM to plot the resulting relationships and save the data: 
+  N_plot = as.vector(predict.gam(aiE_both_gam, newdata=DIT_both_newdata, 
+    exclude = list( "s(mescosom_id)","s(species)"), 
+    type= "response") )
+  aiEp_both =  cbind(DIT_both_newdata, N_plot)
+  m1_both_plot = rbind( m1_both_plot , aiEp_both)
+
+  ggplot(aiEp_both, aes(x = aiE, y =N_plot, color = species) ) + 
+  geom_line( )+  
+  geom_point(data= m1_DIT_both_tmp, mapping= aes(x = aiE, y =alg_per_N, color = species) )
+
+
+}
+
+m1_DIT_plot = m1_both_plot
+
+ggplot(m1_DIT_plot, aes(x = aiE, y =N_plot) ) + 
+  geom_line( )+ facet_grid(temperature~.)+ 
+  geom_point(data= m1_DIT, mapping= aes(x = aiE, y =alg_per_N) )+
+  facet_grid(temperature~.)+
+  xlab("Active information (bits) ")+
+  ylab("Algal consumption per individual")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./aiE_algalperN_all.pdf", width = 8, height = 10)
+
 
 #=============================================================================
 #Fit GAMMs to each temperature treatment X species separately to account for 
