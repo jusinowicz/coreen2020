@@ -153,7 +153,9 @@ cl_dia_pred = NULL
 
 par(mfrow=c(6,1),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
 
-algae_start = mean(m1_data_long$algae_cells_mL,na.rm=T)
+#algae_start = mean(m1_data_long$algae_cells_mL,na.rm=T)
+algae_start = max(m1_data_long$algae_abundance,na.rm=T)
+
 
 for(t in 1:6) { 
 
@@ -204,10 +206,10 @@ for(t in 1:6) {
   # cl_daph[[t]] = gam( Adiff ~  N+s(mesocosm_id,bs="re"), family=binomial, data=daph_tmp)
   # cl_dia[[t]] = gam( Adiff ~  N +s(mesocosm_id,bs="re"), famly=binomial, data=dia_tmp)
 
-  #Use NLS to fit a Type 2 (saturating) response
-  alg2 = formula (Adiff ~  algae_start/(1+c1*exp(b1*N) ) )
+  #Use NLS to fit the decaying logistic/exponential response
+  alg2 = formula (algae_abundance ~  algae_start/(1+c1*exp(b1*N) ) )
 
-  m1 = lm(I(log(algae_start/Adiff-1))~I(N), data = daph_tmp ) 
+  m1 = lm(I(log(algae_start/algae_abundance-1))~I(N), data = daph_tmp ) 
   tryCatch({ 
     cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
     start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
@@ -220,7 +222,7 @@ for(t in 1:6) {
     cl_daph_pred = rbind(cl_daph_pred, daph_pred_tmp)
   }, error = function(e) {} ) 
 
-  m1 = lm(I(log(algae_start/Adiff-1))~I(N), data = dia_tmp ) 
+  m1 = lm(I(log(algae_start/algae_abundance-1))~I(N), data = dia_tmp ) 
   tryCatch( {
     cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
     start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
@@ -232,6 +234,37 @@ for(t in 1:6) {
     dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
     cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
   }, error = function(e) {} ) 
+
+
+
+  # #Use NLS to fit a Type 2 (saturating) response
+  # alg2 = formula (Adiff ~  algae_start/(1+c1*exp(b1*N) ) )
+
+  # m1 = lm(I(log(algae_start/Adiff-1))~I(N), data = daph_tmp ) 
+  # tryCatch({ 
+  #   cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
+  #   start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
+  #   control=nls.control(maxiter = 1000), trace=F ) 
+
+  #   #Predicted values: 
+  #   s=seq(min(daph_tmp$N),max(daph_tmp$N),1 )
+  #   d_tmp = predict(cl_daph[[t]], list( N = s ) )
+  #   daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+  #   cl_daph_pred = rbind(cl_daph_pred, daph_pred_tmp)
+  # }, error = function(e) {} ) 
+
+  # m1 = lm(I(log(algae_start/Adiff-1))~I(N), data = dia_tmp ) 
+  # tryCatch( {
+  #   cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
+  #   start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
+  #   control=nls.control(maxiter = 1000), trace=F ) 
+
+  #   #Predicted values: 
+  #   s=seq(min(dia_tmp$N),max(dia_tmp$N),1 )
+  #   d_tmp = predict(cl_dia[[t]], list( N = s ) )
+  #   dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
+  #   cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
+  # }, error = function(e) {} ) 
 
 
   #To plot in the loop: 
