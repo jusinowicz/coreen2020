@@ -152,25 +152,15 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 				dR = R
 				for( i in 1:nRsp){
 					#Logistic - LV consumption
-					dR[i] = a(times) + R[i]*( (rR[i]) * (1 - R[i]/Ki[i]) - (t(cC[i,])%*%C))
-					
-					#Logistic - Saturating consumption
-					# dR[i] = a[[i]](times) + R[i]*( (rR[i]) * (1 - R[i]/Ki[i]) - 
-					# 	(t(cC[i,])%*%C)^2/(rC[i]^2+(t(cC[i,])%*%C)^2 )  
-					# 	)
-
-					#Logistic - Saturating consumption
-					# dR[i] = a[[i]](times) + R[i]*( (rR[i]) * (1 - R[i]/Ki[i]) - 
-					# 	(t(cC[i,])%*%C)/(rC[i]+(t(cC[i,])%*%C) )  
-					# 	)
-
+					dR[i] = a(times) + R[i] - (t(cC[i,]*(R[i]-R[i]^2/Ki) )%*%C))
+				
 				}
 
 				###Consumer dynamics
 				dC = C 
 				for( i in 1:nCsp){
 					#LV consumption
-					dC[i] = C[i] * ( rC[i] *(eFc[i]*cC[,i])%*%R -(t(cP[i,])%*%P)- muC[i] )
+					dC[i] = C[i] * ( rC[i] *(eFc[i]*cC[,i])%*%(R-R^2/Ki) -(t(cP[i,])%*%P)- muC[i] )
 					
 					#Saturating grazing response.
 					# dC[i] = C[i] * ( rC[i] * (
@@ -190,17 +180,6 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 				for( i in 1:nPsp){
 					#LV prey consumption
 					dP[i] = P[i] * ( rP[i] *(eFp[i]*cP[,i])%*%C - muP[i] )
-
-					# #Saturating consumption
-					# dP[i] = P[i] * ( rP[i] *
-					# 	( (eFp[i]*cP[,i])%*%C )^2/( rP[i]^2 + ((eFp[i]*cP[,i])%*%C)^2 )  - 
-					# 	muP[i] )
-					
-					#Saturating consumption
-					# dP[i] = P[i] * ( rP[i] *
-					# 	( (eFp[i]*cP[,i])%*%C )/( rP[i] + ((eFp[i]*cP[,i])%*%C) )  - 
-					# 	muP[i] )
-
 
 				}
 			for( i in 1:nRsp){
