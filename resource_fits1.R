@@ -153,7 +153,14 @@ cl_dia_pred = NULL
 
 par(mfrow=c(6,1),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
 
+#################
+#There are two different approaches to fitting this. For now, just 
+#comment/uncomment based on the approach: 
+#
+#1. Increasing logistic model of total consumption vs. N
 #algae_start = mean(m1_data_long$algae_cells_mL,na.rm=T)
+
+#2 Decreasing logsitic model of algae abundance vs. N
 algae_start = max(m1_data_long$algae_abundance,na.rm=T)
 
 
@@ -206,38 +213,9 @@ for(t in 1:6) {
   # cl_daph[[t]] = gam( Adiff ~  N+s(mesocosm_id,bs="re"), family=binomial, data=daph_tmp)
   # cl_dia[[t]] = gam( Adiff ~  N +s(mesocosm_id,bs="re"), famly=binomial, data=dia_tmp)
 
-  #Use NLS to fit the decaying logistic/exponential response
-  alg2 = formula (algae_abundance ~  algae_start/(1+c1*exp(b1*N) ) )
+ 
 
-  m1 = lm(I(log(algae_start/algae_abundance-1))~I(N), data = daph_tmp ) 
-  tryCatch({ 
-    cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
-    start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
-    control=nls.control(maxiter = 1000), trace=F ) 
-
-    #Predicted values: 
-    s=seq(min(daph_tmp$N),max(daph_tmp$N),1 )
-    d_tmp = predict(cl_daph[[t]], list( N = s ) )
-    daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
-    cl_daph_pred = rbind(cl_daph_pred, daph_pred_tmp)
-  }, error = function(e) {} ) 
-
-  m1 = lm(I(log(algae_start/algae_abundance-1))~I(N), data = dia_tmp ) 
-  tryCatch( {
-    cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
-    start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
-    control=nls.control(maxiter = 1000), trace=F ) 
-
-    #Predicted values: 
-    s=seq(min(dia_tmp$N),max(dia_tmp$N),1 )
-    d_tmp = predict(cl_dia[[t]], list( N = s ) )
-    dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
-    cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
-  }, error = function(e) {} ) 
-
-
-
-  # #Use NLS to fit a Type 2 (saturating) response
+  # #1. Use NLS to fit a Type 2 (saturating) response
   # alg2 = formula (Adiff ~  algae_start/(1+c1*exp(b1*N) ) )
 
   # m1 = lm(I(log(algae_start/Adiff-1))~I(N), data = daph_tmp ) 
@@ -266,23 +244,52 @@ for(t in 1:6) {
   #   cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
   # }, error = function(e) {} ) 
 
+ #2. Use NLS to fit the decaying logistic/exponential response
+  alg2 = formula (algae_abundance ~  algae_start/(1+c1*exp(b1*N) ) )
+
+  m1 = lm(I(log(algae_start/algae_abundance))~I(N), data = daph_tmp ) 
+  tryCatch({ 
+    cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
+    start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
+    control=nls.control(maxiter = 1000), trace=F ) 
+
+    #Predicted values: 
+    s=seq(min(daph_tmp$N),max(daph_tmp$N),1 )
+    d_tmp = predict(cl_daph[[t]], list( N = s ) )
+    daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+    cl_daph_pred = rbind(cl_daph_pred, daph_pred_tmp)
+  }, error = function(e) {} ) 
+
+  m1 = lm(I(log(algae_start/algae_abundance))~I(N), data = dia_tmp ) 
+  tryCatch( {
+    cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
+    start=list(b1=(as.numeric(coef(m1)[2])), c1=exp(as.numeric(coef(m1)[1] ) ) ),
+    control=nls.control(maxiter = 1000), trace=F ) 
+
+    #Predicted values: 
+    s=seq(min(dia_tmp$N),max(dia_tmp$N),1 )
+    d_tmp = predict(cl_dia[[t]], list( N = s ) )
+    dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
+    cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
+  }, error = function(e) {} ) 
+
 
   #To plot in the loop: 
-  plot((daph_tmp$N),(daph_tmp$Adiff),col="blue",
-    ylim=c(min( c(min(daph_tmp$Adiff),min(dia_tmp$Adiff)) ), max(c(max(daph_tmp$Adiff),max(dia_tmp$Adiff) ) ) ),
-    xlim=c(min( c(min(daph_tmp$N),min(dia_tmp$N)) ), max(c(max(daph_tmp$N),max(dia_tmp$N) ) ) )
-     )
-  s=seq(min(daph_tmp$N),max(daph_tmp$N),1 )
-  lines(s, predict(cl_daph[[t]], list( N = s ) ), col = "blue")
+  # plot((daph_tmp$N),(daph_tmp$Adiff),col="blue",
+  #   ylim=c(min( c(min(daph_tmp$Adiff),min(dia_tmp$Adiff)) ), max(c(max(daph_tmp$Adiff),max(dia_tmp$Adiff) ) ) ),
+  #   xlim=c(min( c(min(daph_tmp$N),min(dia_tmp$N)) ), max(c(max(daph_tmp$N),max(dia_tmp$N) ) ) )
+  #    )
+  # s=seq(min(daph_tmp$N),max(daph_tmp$N),1 )
+  # lines(s, predict(cl_daph[[t]], list( N = s ) ), col = "blue")
 
-  points((dia_tmp$N),(dia_tmp$Adiff),col="red")
-  s=seq(min(dia_tmp$N),max(dia_tmp$N),1 )
-  lines(s, predict(cl_dia[[t]], list( N = s ) ), col = "red")
+  # points((dia_tmp$N),(dia_tmp$Adiff),col="red")
+  # s=seq(min(dia_tmp$N),max(dia_tmp$N),1 )
+  # lines(s, predict(cl_dia[[t]], list( N = s ) ), col = "red")
 
 
 
   ############################  
-  #The inverse relationship: 
+  #The inverse relationship to approach 1: 
   #alg2 = formula (Adiff ~ b/(1+b*N) )
   # alg2 = formula (N ~  exp(b1*Adiff+c1)  )
   # m1 = lm(I(log(N+1))~I((Adiff)), data = daph_tmp ) 
@@ -309,11 +316,11 @@ for(t in 1:6) {
 cl_plot = rbind(cl_daph_plot,cl_dia_plot)
 cl_pred = rbind(cl_daph_pred,cl_dia_pred)
 
-ggplot(cl_plot, aes(x = N, y =Adiff, color = species) ) + 
+ggplot(cl_plot, aes(x = N, y =algae_abundance, color = species) ) + 
   geom_point( )+ facet_grid(temperature~species)+ 
   geom_line(data= cl_pred, mapping= aes(x = s, y =N_pred, color=species) )+
   facet_grid(temperature~species)+
   xlab("Zooplankton abundance ")+
   ylab("Algal consumption rate")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-ggsave("./algal_consump_diaDaph.pdf", width = 8, height = 10)
+ggsave("./algal_consump2_diaDaph.pdf", width = 8, height = 10)
