@@ -89,64 +89,32 @@ w = 1
 #for (w in 1:nwebs){ 
 print(w)
 
-#Assume 3 trophic levels unless otherwise specified.
-nRsp = 1 #ceiling(runif(1)*30)
-nCsp = 2 #ceiling(runif(1)*20)
+#Assume 2 trophic levels unless otherwise specified.
+nRsp = 1 #Algae
+nCsp = 2 #Spp 1 is Daphnia, Spp 2 is Diaphanosoma
 nPsp = 0 #ceiling(runif(1)*10)
 nspp = nRsp+nCsp+nPsp
 
 #Randomly generate the species parameters for the model as well: 
 spp_prms = NULL
 #Resource: Nearly identical resource dynamics: 
-spp_prms$rR = matrix(rnorm(nRsp,1.5,0), nRsp, 1) #intrinsic growth
-spp_prms$Ki = matrix(rnorm(nRsp,1.5,0), nRsp, 1) #carrying capacity
+spp_prms$rR = matrix(rnorm(nRsp,1,0), nRsp, 1) #intrinsic growth -- Not used here
+spp_prms$Ki = matrix(rnorm(nRsp,10E6,0), nRsp, 1) #carrying capacity -- Constant algal addition
 
 #Consumers: 
-spp_prms$rC = matrix(0.6, nCsp, 1) #matrix(rnorm(nCsp,.5,0.2), nCsp, 1) #intrisic growth
-#spp_prms$rC[2] = 0.199999 #matrix(rnorm(nCsp,.5,0.2), nCsp, 1) #intrisic growth
+spp_prms$rC = matrix(0.15, nCsp, 1)  #intrisic growth - From fits in resource_fits1.R
+spp_prms$rC[2] = 0.14 #matrix(rnorm(nCsp,.5,0.2), nCsp, 1) #intrisic growth
 spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
-spp_prms$muC = matrix(0.3, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
+spp_prms$muC = matrix(0.5, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
 #Consumption rates: 
-#Generate a hierarchy where each species predominantly feeds on particular resource. 
-dspp = abs((nCsp - nRsp))
-#hier1= seq(1/nRsp, (1-1/nRsp), length=nRsp)
-hier1 = c(matrix(0.9,nRsp,1)) #1
-#hier1 = c(matrix(0.2,nRsp,1)) #2
+spp_prms$cC = matrix(c(0.035,0.015),nRsp,nCsp)
 
-spp_prms$cC = hier1 
-for( n in 1:nCsp) {
-	spp_prms$cC = cbind(spp_prms$cC, shifter(hier1,n))
-}
-spp_prms$cC = matrix(spp_prms$cC[1:nRsp,1:nCsp ],nRsp,nCsp)
-#spp_prms$cC[,1] = c(0.5,0.1)
-#spp_prms$cC[,2] = c(0.5,0.1)
-
-#  spp_prms$cC[,1] = c(0.5,0.0,0.1)
-#  spp_prms$cC[,2] = c(0.1,0.6,0.1)
-#  spp_prms$cC[,3] = c(0.1,0.0,0.5)
-
-# #Predators: 
-spp_prms$rP =  matrix(0.4, nPsp, 1) #matrix(rnorm(nPsp,0.5,0), nPsp, 1) #intrisic growth
-spp_prms$eFp = matrix(1,nPsp,nCsp) # just make the efficiency for everything 1 for now
-spp_prms$muP = matrix(0.2, nPsp, 1)#matrix(rnorm(nPsp,0.6,0), nPsp, 1)  #mortality rates
+# #Predators: These are just dummy variables for now
+spp_prms$rP =  matrix(0.0, 1, 1) #matrix(rnorm(nPsp,0.5,0), nPsp, 1) #intrisic growth
+spp_prms$eFp = matrix(1,1,nCsp) # just make the efficiency for everything 1 for now
+spp_prms$muP = matrix(0.0, 1, 1)#matrix(rnorm(nPsp,0.6,0), nPsp, 1)  #mortality rates
 #Consumption rates: 
-#Generate a hierarchy where each species predominantly feeds on particular resource. 
-dspp = ((nPsp - nCsp))
-if(dspp<0){dspp = 0 }
-#hier1= seq(1/nCsp, (1-1/nCsp), length = nCsp)
-hier1 = c(matrix(0.1,nCsp,1)) #1
-#hier1 = c(matrix(0.5,nCsp,1)) #2
-spp_prms$cP = hier1
-for( n in 1:nPsp) {
-	spp_prms$cP = cbind(spp_prms$cP, shifter(hier1,n))
-}
-spp_prms$cP = matrix(spp_prms$cP[1:nCsp,1:nPsp],nCsp,nPsp)
-# spp_prms$cP[,1] = c(0.5,0.4)
-# spp_prms$cP[,2] = c(0.5,0.4)
-
- # spp_prms$cP[,1] = c(0.5,0.1,0.1)
- # spp_prms$cP[,2] = c(0.1,0.6,0.1)
- # spp_prms$cP[,3] = c(0.1,0.1,0.5)
+spp_prms$cP = matrix(c(0.0,0.0),nCsp,1)
 
 #=============================================================================
 # Inner loop. Run the food web model, calculate information theoretic 
