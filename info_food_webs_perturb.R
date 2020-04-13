@@ -92,13 +92,13 @@ print(w)
 #Assume 2 trophic levels unless otherwise specified.
 nRsp = 1 #Algae
 nCsp = 2 #Spp 1 is Daphnia, Spp 2 is Diaphanosoma
-nPsp = 0 #ceiling(runif(1)*10)
+nPsp = 1 #This is actually 0 --> Just a dummy predator
 nspp = nRsp+nCsp+nPsp
 
 #Randomly generate the species parameters for the model as well: 
 spp_prms = NULL
 #Resource: Nearly identical resource dynamics: 
-spp_prms$rR = matrix(rnorm(nRsp,1,0), nRsp, 1) #intrinsic growth -- Not used here
+spp_prms$rR = matrix(rnorm(nRsp,10E6,0), nRsp, 1) #intrinsic growth -- Not used here
 spp_prms$Ki = matrix(rnorm(nRsp,10E6,0), nRsp, 1) #carrying capacity -- Constant algal addition
 
 #Consumers: 
@@ -132,8 +132,9 @@ spp_prms$cP = matrix(c(0.0,0.0),nCsp,1)
 #Random resource fluctuations:
 #winit = runif(nspp,min=1,max=6)
 #winit = c(1.007368, 1.007368, 1.005849, 1.005849, 0.9988030, 0.9988030)
+winit = matrix(c(10E3,10,10,0))
 tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
-	tend, delta1, res_R = res_R,final = FALSE ))}, error = function(e){}) 
+	tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 
 out1[[w]]$out[tl,]
 

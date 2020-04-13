@@ -152,7 +152,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 				dR = R
 				for( i in 1:nRsp){
 					#Logistic - LV consumption
-					dR[i] = a(times) + R[i] - (t(cC[i,]*(R[i]-R[i]^2/Ki) )%*%C))
+					dR[i] = a[[i]](times) + R[i] - (t(cC[i,]*(R[i]-R[i]^2/Ki))%*%C)
 				
 				}
 
@@ -182,6 +182,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 					dP[i] = P[i] * ( rP[i] *(eFp[i]*cP[,i])%*%C - muP[i] )
 
 				}
+
 			for( i in 1:nRsp){
 				a[[i]] = a[[i]](times) 
 				#a = (rR[1]+a(times))
