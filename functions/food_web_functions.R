@@ -68,12 +68,14 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 		spp_prms = NULL
 		#Resource: Nearly identical resource dynamics: 
 		spp_prms$rR = matrix(rnorm(nRsp,30,0.1), nRsp, 1) #intrinsic growth
-		spp_prms$Ki = matrix(rnorm(nRsp,50,0.1), nRsp, 1) #carrying capacity
+		spp_prms$Kr = matrix(rnorm(nRsp,50,0.1), nRsp, 1) #carrying capacity
 
 		#Consumers: 
 		spp_prms$rC = matrix(rnorm(nCsp,.8,0.1), nCsp, 1) #intrisic growth
 		spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
 		spp_prms$muC = matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
+		spp_prms$Kc = matrix(rnorm(nRsp,50,0.1), nRsp, 1) #carrying capacity
+
 		#Consumption rates: 
 		#Generate a hierarchy where each species predominantly feeds on particular resource. 
 		dspp = abs((nCsp - nRsp))
@@ -102,7 +104,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 
 	}
 
-	rR=(spp_prms$rR); Ki =spp_prms$Ki; rC = spp_prms$rC; eFc = spp_prms$eFc
+	rR=(spp_prms$rR); Kr =spp_prms$Kr; Kc =spp_prms$Kc; rC = spp_prms$rC; eFc = spp_prms$eFc
 	muC = spp_prms$muC; cC = spp_prms$cC; rP = spp_prms$rP; eFp = spp_prms$eFp
 	muP = spp_prms$muP; cP = spp_prms$cP
 
@@ -113,10 +115,15 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 			#Make the a variable -- see the documentation for forcings for an example
 			amp = res_R[1] #1
 			xint = res_R[2] #0
-			a[[i]] = approxfun( x = times, y = amp*exp(rnorm(times) )+xint, method = "linear", rule = 2) 
-			a_t = amp*exp(rnorm(times) )+xint
-			#a = approxfun( x = times, y = amp*rnorm(times)+xint, method = "linear", rule = 2) 
-			#a_t = amp*rnorm(times)+xint
+			
+			#1. Log normal
+			# a[[i]] = approxfun( x = times, y = amp*exp(rnorm(times) )+xint, method = "linear", rule = 2) 
+			# a_t = amp*exp(rnorm(times) )+xint
+			
+			#2.Normal
+			a[[i]] = approxfun( x = times, y = abs(amp*(rnorm(times) )+xint), method = "linear", rule = 2) 
+			a_t = abs(amp*(rnorm(times) )+xint)
+
 			print( paste("Mean of a(t) = ", mean(a_t),sep="")) 
 			print( paste("Var of a(t) = ", var(a_t),sep="")) 
 			a_m = mean(a_t)
@@ -135,7 +142,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 		print(res_R)
 		#Pass all of these parameters as a list
 		parms = list(nspp=nspp, nRsp = nRsp, nCsp = nCsp, nPsp =nPsp,
-			rR = spp_prms$rR, Ki =spp_prms$Ki,
+			rR = spp_prms$rR, Kr =spp_prms$Kr, Kc =spp_prms$Kc,
 			rC = spp_prms$rC, eFc = spp_prms$eFc, muC = spp_prms$muC, cC = spp_prms$cC,
 			rP = spp_prms$rP, eFp = spp_prms$eFp, muP = spp_prms$muP, cP = spp_prms$cP,
 			a = a
@@ -153,15 +160,24 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 				dR = R
 				for( i in 1:nRsp){
 					#Logistic - LV consumption
-					dR[i] = a[[i]](times) + R[i] - (t(cC[i,]*(R[i]-R[i]^2/Ki))%*%C)
-				
+					#dR[i] = a[[i]](times) - (t(cC[i,]*((R[i]-R[i]^2/Ki)))%*%C)
+					dR[i] = a[[i]](times) - (t(cC[i,]*R[i])%*%C)
+
+
 				}
 
 				###Consumer dynamics
 				dC = C 
 				for( i in 1:nCsp){
 					#LV consumption
-					dC[i] = C[i] * ( rC[i] *(eFc[i]*cC[,i])%*%(R-R^2/Ki) -(t(cP[i,])%*%P)- muC[i] )
+					#dC[i] = C[i] * ( rC[i] *(eFc[i]*cC[,i])%*%((R-R^2/Ki)) -muC[i] )
+					dC[i] = C[i] * ( rC[i] * ( (eFc[i]*cC[,i])%*%(R) - C[i]/Kc[i] ) - muC[i] )
+					#dC[i] = C[i] *rC[i] * (1 - C[i]/200)
+					#(R-R^2/Ki)
+
+
+
+					#(t(cP[i,])%*%P)- 
 					
 					#Saturating grazing response.
 					# dC[i] = C[i] * ( rC[i] * (
@@ -196,7 +212,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 
 			#Pass all of these parameters as a list
 			parms = list(nspp=nspp, nRsp = nRsp, nCsp = nCsp, nPsp =nPsp,
-				rR = spp_prms$rR, Ki =spp_prms$Ki,
+				rR = spp_prms$rR, Kr =spp_prms$Kr, Kc =spp_prms$Kc,
 				rC = spp_prms$rC, eFc = spp_prms$eFc, muC = spp_prms$muC, cC = spp_prms$cC,
 				rP = spp_prms$rP, eFp = spp_prms$eFp, muP = spp_prms$muP, cP = spp_prms$cP
 			 )

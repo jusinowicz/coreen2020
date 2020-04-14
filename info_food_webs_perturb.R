@@ -69,9 +69,13 @@ te_web_tr = te_web #Transient dynamics
 si_web_tr = si_web
 
 #Random resources:
- c = 0
- amp = 1/exp(1)
+ c = 10E6
+ amp = 1000 #1/exp(1)
  res_R = c(amp,c)
+
+ # c = 0
+ # amp = 0 #1/exp(1)
+ # res_R = c(amp,c)
 
 #or 
 # res_R = NULL
@@ -98,16 +102,24 @@ nspp = nRsp+nCsp+nPsp
 #Randomly generate the species parameters for the model as well: 
 spp_prms = NULL
 #Resource: Nearly identical resource dynamics: 
-spp_prms$rR = matrix(rnorm(nRsp,10E6,0), nRsp, 1) #intrinsic growth -- Not used here
-spp_prms$Ki = matrix(rnorm(nRsp,10E6,0), nRsp, 1) #carrying capacity -- Constant algal addition
+spp_prms$rR = matrix(10E6, nRsp, 1) #intrinsic growth -- Not used here
+spp_prms$Kr = matrix(10E6, nRsp, 1) #carrying capacity -- Constant algal addition
 
+############################
 #Consumers: 
-spp_prms$rC = matrix(0.15, nCsp, 1)  #intrisic growth - From fits in resource_fits1.R
-spp_prms$rC[2] = 0.14 #matrix(rnorm(nCsp,.5,0.2), nCsp, 1) #intrisic growth
+# In the single species exponential growth phase the growth rate of each consumer rC
+# is found by fitting an exponential model (e.g. cR_daph [[temp]] in resource_fits1.R).
+# However, this exponent must ultimately reflect the consumption rate of algae, which
+# means there is a conversion factor missing such that consumption_alga * X = exponent. 
+# Solving for X should give the intrinsic growth rate rC. From
+# resource_fits1.R, this means taking coef(cR_daph[[2]])[1]/coef(cl_daph[[2]])[1]. 
+#
+spp_prms$rC = matrix( c(5,11) , nCsp, 1)  #intrisic growth - From fits in resource_fits1.R
 spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
-spp_prms$muC = matrix(0.5, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
+spp_prms$muC = matrix(0.0, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
 #Consumption rates: 
 spp_prms$cC = matrix(c(0.035,0.015),nRsp,nCsp)
+spp_prms$Kc = matrix(c(45,350), nCsp, 1) #carrying capacities, approximately matching data
 
 # #Predators: These are just dummy variables for now
 spp_prms$rP =  matrix(0.0, 1, 1) #matrix(rnorm(nPsp,0.5,0), nPsp, 1) #intrisic growth
@@ -132,7 +144,7 @@ spp_prms$cP = matrix(c(0.0,0.0),nCsp,1)
 #Random resource fluctuations:
 #winit = runif(nspp,min=1,max=6)
 #winit = c(1.007368, 1.007368, 1.005849, 1.005849, 0.9988030, 0.9988030)
-winit = matrix(c(10E3,10,10,0))
+winit = matrix(c(10E4,1,1,0))
 tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
 	tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 
@@ -304,19 +316,19 @@ tlg = tl
 
 par(mfrow=c(3,1))
 #Resource species in RED
-plot(out[1:tlg,2],t="l",col="red",ylim = c(0,max(out[,2:(nRsp+1)],na.rm=T)))
+plot(out[1:tlg,2],t="l",col="red",ylim = c(0,max(out[1:tlg,2:(nRsp+1)],na.rm=T)))
 for( n in 2:(nRsp+1) ) {
 lines(out[1:tlg,n],t="l",col="red")
 }
 
 #Consumer species in BLUE 
-plot(out[1:tlg,nRsp+2],t="l",col="blue",ylim = c(0,max(out[,(nRsp+2):(nRsp+nCsp+1)],na.rm=T)))
+plot(out[1:tlg,nRsp+2],t="l",col="blue",ylim = c(0,max(out[1:tlg,(nRsp+2):(nRsp+nCsp+1)],na.rm=T)))
 for( n in (nRsp+2):(nRsp+nCsp+1)  ) {
 lines(out[1:tlg,n],t="l",col="blue")
 }
 
 #Predator species in BLACK
-plot(out[1:tlg,paste(nRsp+nCsp+1)],t="l",ylim = c(0,max(out[,(nRsp+nCsp+2):(nspp+1)],na.rm=T)))
+plot(out[1:tlg,paste(nRsp+nCsp+1)],t="l",ylim = c(0,max(out[1:tlg,(nRsp+nCsp+2):(nspp+1)],na.rm=T)))
 for( n in ((nRsp+nCsp+1):(nspp) ) ) {
 lines(out[1:tlg,paste(n)],t="l")
 }
