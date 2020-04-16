@@ -114,7 +114,8 @@ spp_prms$Kr = matrix(10E6, nRsp, 1) #carrying capacity -- Constant algal additio
 # Solving for X should give the intrinsic growth rate rC. From
 # resource_fits1.R, this means taking coef(cR_daph[[2]])[1]/coef(cl_daph[[2]])[1]. 
 #
-spp_prms$rC = matrix( c(5,11) , nCsp, 1)  #intrisic growth - From fits in resource_fits1.R
+#spp_prms$rC = matrix( c(5,11) , nCsp, 1)  #intrisic growth - Solved fits in resource_fits1.R
+spp_prms$rC = matrix( c(0.169,0.138) , nCsp, 1)  #intrisic growth -  Direct fits in resource_fits1.R
 spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
 spp_prms$muC = matrix(0.0, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
 #Consumption rates: 

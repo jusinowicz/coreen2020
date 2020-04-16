@@ -139,7 +139,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 	### Function specifying the full dynamics of all trophic levels:
 
 	if ( length(res_R)>0){
-		print(res_R)
+		print(spp_prms$rC)
 		#Pass all of these parameters as a list
 		parms = list(nspp=nspp, nRsp = nRsp, nCsp = nCsp, nPsp =nPsp,
 			rR = spp_prms$rR, Kr =spp_prms$Kr, Kc =spp_prms$Kc,
@@ -159,9 +159,11 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 				###Resource dynamics: Logistic growth, reduced by consumption
 				dR = R
 				for( i in 1:nRsp){
-					#Logistic - LV consumption
-					#dR[i] = a[[i]](times) - (t(cC[i,]*((R[i]-R[i]^2/Ki)))%*%C)
+					#Linear consumption rate
 					dR[i] = a[[i]](times) - (t(cC[i,]*R[i])%*%C)
+
+					#dR[i] = a[[i]](times) - (t(cC[i,]*((R[i]-R[i]^2/Ki)))%*%C)
+					#dR[i] = a[[i]](times) - (t(cC[i,]*R[i])%*%C)
 
 
 				}
@@ -169,10 +171,12 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 				###Consumer dynamics
 				dC = C 
 				for( i in 1:nCsp){
-					#LV consumption
+					#Simple logistic growth, with rC from cR_daph/cR_dia
+					#dC[i] = C[i] *rC[i] * (1 - C[i]/Kc[i])
+					#Logistic growth with consumption rate, cl_daph/cl_dia
+					dC[i] = (C[i] *cC[,i] ) * (1 - C[i]/Kc[i])
 					#dC[i] = C[i] * ( rC[i] *(eFc[i]*cC[,i])%*%((R-R^2/Ki)) -muC[i] )
-					dC[i] = C[i] * ( rC[i] * ( (eFc[i]*cC[,i])%*%(R) - C[i]/Kc[i] ) - muC[i] )
-					#dC[i] = C[i] *rC[i] * (1 - C[i]/200)
+					#dC[i] = C[i] * ( ( rC[i] * (eFc[i]*cC[,i])%*%(R)) * ( 1 - C[i]/Kc[i] ) - muC[i] )
 					#(R-R^2/Ki)
 
 
