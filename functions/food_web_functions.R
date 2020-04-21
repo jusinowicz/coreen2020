@@ -111,6 +111,8 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 
 	if ( length(res_R)>0){
 		a = list( matrix(0,nRsp,1))
+		b = list( matrix(0,nCsp,1))
+
 		for( i in 1:nRsp){
 			#Make the a variable -- see the documentation for forcings for an example
 			amp = res_R[1] #1
@@ -128,6 +130,29 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 			print( paste("Var of a(t) = ", var(a_t),sep="")) 
 			a_m = mean(a_t)
 			vara = var(a_t)
+		}
+
+		for( i in 1:nCsp){
+			#Make the a variable -- see the documentation for forcings for an example
+			amp = res_R[3] #1
+			xint = res_R[4] #0
+			
+			#1. Log normal
+			mu = xint
+			sd = amp
+			location = log(mu^2 / sqrt(sd^2 + mu^2))
+			shape = sqrt(log(1 + (sd^2 / mu^2)))
+			b[[i]] = approxfun( x = times, y = rlnorm(times, location,shape) , method = "linear", rule = 2) 
+			b_t =rlnorm(times, location,shape)
+			
+			#2.Normal
+			# b[[i]] = approxfun( x = times, y = abs(amp*(rnorm(times) )+xint), method = "linear", rule = 2) 
+			# b_t = abs(amp*(rnorm(times) )+xint)
+
+			print( paste("Mean of b(t) = ", mean(b_t),sep="")) 
+			print( paste("Var of b(t) = ", var(b_t),sep="")) 
+			b_m = mean(b_t)
+			varb = var(b_t)
 		}
 
 	}
@@ -162,6 +187,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 					#Linear consumption rate
 					dR[i] = a[[i]](times) - (t(cC[i,]*R[i])%*%C)
 
+					#Etc. 
 					#dR[i] = a[[i]](times) - (t(cC[i,]*((R[i]-R[i]^2/Ki)))%*%C)
 					#dR[i] = a[[i]](times) - (t(cC[i,]*R[i])%*%C)
 
@@ -173,13 +199,14 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 				for( i in 1:nCsp){
 					#Simple logistic growth, with rC from cR_daph/cR_dia
 					#dC[i] = C[i] *rC[i] * (1 - C[i]/Kc[i])
+					
 					#Logistic growth with consumption rate, cl_daph/cl_dia
-					dC[i] = (C[i] *cC[,i] ) * (1 - C[i]/Kc[i])
+					dC[i] = b[[i]](times)+( (C[i] *cC[,i]*rC[i])%*%R ) * (1 - C[i]/Kc[i])
+					
+					#Etc
 					#dC[i] = C[i] * ( rC[i] *(eFc[i]*cC[,i])%*%((R-R^2/Ki)) -muC[i] )
 					#dC[i] = C[i] * ( ( rC[i] * (eFc[i]*cC[,i])%*%(R)) * ( 1 - C[i]/Kc[i] ) - muC[i] )
 					#(R-R^2/Ki)
-
-
 
 					#(t(cP[i,])%*%P)- 
 					

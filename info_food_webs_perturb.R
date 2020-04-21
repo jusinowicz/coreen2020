@@ -32,7 +32,7 @@ source("./functions/info_theory_functions.R")
 #=============================================================================
 
 #Length and time steps of each model run
-tend = 200
+tend = 100
 delta1 = 0.01
 tl=tend/delta1
 
@@ -47,31 +47,28 @@ nwebs = 5
 
 ###
 #Output of each web
-out1 = list(matrix(0,nwebs,1))
-#Converting the web to Rutledge's compartment model and calculating the information
-#theoretic quantities: Shannon Entropy, Mutual Information, Conditional Entropy
-rweb1 = list(matrix(0,nwebs,1))
-rweb1_eq = rweb1 #Equilibrium dynamics
-rweb1_tr = rweb1 #Transient dynamics
+out1 = vector("list",nwebs)
+#Invasion scenario
+out_inv1 = vector("list",nwebs)
 
 #Dynamic information metrics calculated from the (discretized) time series 
-di_web = list(matrix(0,nwebs,1))
-di_web_eq = di_web #Equilibrium dynamics
-di_web_tr = di_web #Transient dynamics
+di_web = vector("list",nwebs)
 
 #Track the average transfer entropy and separable information between each pair of 
 #species as a way to build a network of information flow through the network. 
-te_web = list(matrix(0,nwebs,1))
-si_web = list(matrix(0,nwebs,1)) 
-te_web_eq = te_web #Equilibrium dynamics
-si_web_eq = si_web
-te_web_tr = te_web #Transient dynamics
-si_web_tr = si_web
+te_web = vector("list",nwebs)
+si_web =vector("list",nwebs) 
+
+#The ensemble version of the AI
+aiE_web = vector("list",nwebs)
 
 #Random resources:
- c = 10E6
- amp = 1000 #1/exp(1)
- res_R = c(amp,c)
+ c1 = 10E6
+ amp1 = 100000 #1/exp(1)
+#Random consumers
+ c2 = 20
+ amp2 = 100 #1/exp(1)
+ res_R = c(amp1,c1,amp2,c2)
 
  # c = 0
  # amp = 0 #1/exp(1)
@@ -115,7 +112,8 @@ spp_prms$Kr = matrix(10E6, nRsp, 1) #carrying capacity -- Constant algal additio
 # resource_fits1.R, this means taking coef(cR_daph[[2]])[1]/coef(cl_daph[[2]])[1]. 
 #
 #spp_prms$rC = matrix( c(5,11) , nCsp, 1)  #intrisic growth - Solved fits in resource_fits1.R
-spp_prms$rC = matrix( c(0.169,0.138) , nCsp, 1)  #intrisic growth -  Direct fits in resource_fits1.R
+spp_prms$rC = matrix( c(6.86e-5, 2.46e-4) , nCsp, 1)  #intrisic growth -  Direct fits in resource_fits1.R
+#coef(cl_daph[[5]])[1]/(coef(cR_daph[[5]])[1]*10e6)
 spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
 spp_prms$muC = matrix(0.0, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
 #Consumption rates: 
@@ -129,167 +127,131 @@ spp_prms$muP = matrix(0.0, 1, 1)#matrix(rnorm(nPsp,0.6,0), nPsp, 1)  #mortality 
 #Consumption rates: 
 spp_prms$cP = matrix(c(0.0,0.0),nCsp,1)
 
-#=============================================================================
-# Inner loop. Run the food web model, calculate information theoretic 
-# quantities. 
-#=============================================================================
-#=============================================================================
-# This function gives: 
-# out 		The time series for of population growth for each species in the web
-#			This can be set to just give the final 2 time steps of the web with
-#			"final = TRUE"
-# spp_prms	The parameters of all species in the food web
-#=============================================================================
-# tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
-# 	tend, delta1, res_R = NULL,final = FALSE ))}, error = function(e){}) 
-#Random resource fluctuations:
-#winit = runif(nspp,min=1,max=6)
-#winit = c(1.007368, 1.007368, 1.005849, 1.005849, 0.9988030, 0.9988030)
-winit = matrix(c(10E4,1,1,0))
-tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
-	tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
+for (w in 1:nwebs){ 
+	#=============================================================================
+	# Outer loop. First run to equilibrate the population dynamics
+	#=============================================================================
+	#=============================================================================
+	# This function gives: 
+	# out 		The time series for of population growth for each species in the web
+	#			This can be set to just give the final 2 time steps of the web with
+	#			"final = TRUE"
+	# spp_prms	The parameters of all species in the food web
+	#=============================================================================
+	#
+	winit = matrix(c(10E6,1,1,0))
+	tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
+		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 
-out1[[w]]$out[tl,]
-
-
-#=============================================================================
-# Perturbation set 1: Remove each species and track the dynamics
-#=============================================================================
-for (s in 1:nspp){
-
-	out_temp =NULL
-	out_temp2 =NULL
-	inv_spp = s
-	winit =  out1[[1]]$out[tl,2:(nspp+1)]
-	winit[inv_spp] = 0
-
-	#Equilibrate new community
-	tryCatch( {out_temp = (food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
-	tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
-
-	#Invade
-	#ti = which(out_temp$out[ ,nRsp+3] == max(out_temp$out[,nRsp+3] ) )
-	ti = tl
-	winit =  out_temp$out[ti,2:(nspp+1)]
-	winit[inv_spp] = .1
-
-	#Invade new community
-	tryCatch( {out_temp2 = (food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
-	tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
-
-	#Competition from competitor
-	#plot(out_temp2$out[1500:2000,(s+1)])
-	#ts1=log(out_temp2$out[1500:2000,(s+1)])
-	
-	#"Competition" from predator
-	plot(out_temp2$out[50:300,(s+1)])
-	ts1=log(out_temp2$out[50:300,(s+1)])
-	ts2=1:length(ts1)
-	summary(lm(ts1~ts2))
-
+	out1[[w]]$out[tl,]
 
 	#=============================================================================
-	# Information theoretic assessment of the foodweb.
+	# Inner loop: Mutual invasion:remove each species and track the dynamics
 	#=============================================================================
-	#=============================================================================
-	# This section is as per Rutledge, Basore, and Mulholland 1976
-	#=============================================================================
-	## This code takes the ODEs and converts them to a biomass balance matrix and 
-	## transition matrix. 
-	## This version creates a compartment for each "event" where biomass is gained 
-	## or loss. This includes birth, death, and "inefficiency" in the form of the 
-	## way that biomass consumed translates to new population biomass. 
-	#=============================================================================
-	# This function gives:
-	# Qi(t)		Biomass proportion flow through a node at time t
-	# fij(t)	Probability of biomass flow between i and j at t
-	# fijQi(t)  Total biomass flowing from i to j at t
-	# sD 		Shannon entropy
-	# mI_mean	Average mutual information
-	# mI_per	Mutual information per interaction
-	# ce 		Conditional entropy		
-	#=============================================================================
-	
-	rweb1[w] = list(rutledge_web( spp_list=c(nRsp,nCsp,nPsp), pop_ts = out1[[w]]$out[,2:(nspp+1)],
-		spp_prms = out1[[w]]$spp_prms) )
+	a_temp = NULL
+	for (s in 1:2){
 
-	#=============================================================================
-	# Information processing networks
-	#=============================================================================
-	## This code takes the population time-series counts output by the ODEs and 
-	## calculates Excess Entropy, Active Information Storage, and Transfer Entropy.
-	## Each quantity is calculated at both the average and local level.  
-	#=============================================================================
-	# This function gives:
-	# EE_mean		Average mutual information per species
-	# AI_mean		Average active information per species
-	# TE_mean		Average transfer entropy per species
-	# 
-	# EE_local		Local mutual information per species
-	# AI_local		Local active information per species
-	# TE_local		Local transfer entropy per species
-	#=============================================================================
-	nt1 = 1
-	nt2 = tl
-	f1 = 100 #scaling factor
-	di_web[w] = list(get_info_dynamics(pop_ts = floor(f1*out1[[w]]$out[nt1:tl,2:(nspp+1)]), 
-		k=k,with_blocks=FALSE))
+		out_temp =NULL
+		out_temp2 =NULL
+		inv_spp = s+2
+		winit =  out1[[1]]$out[tl,2:(nspp+1)]
+		winit[inv_spp] = 0
 
-	## This code takes the population time-series counts output by the ODEs and 
-	## calculates the average Transfer Entropy from each species to every other 
-	## species. The goal is to get an overview of the major information pathways 
-	## in the web.   
-	#=============================================================================
-	# This function gives:
-	# te_web		Average transfer entropy per species as a pairwise matrix
-	#=============================================================================
-	te_web[w] = list( get_te_web( pop_ts = floor(f1*out1[[w]]$out[nt1:tl,2:(nspp+1)]), 
-		k=k) )
+		#Equilibrate new community
+		tryCatch( {out_temp = (food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
+		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 
-	## This code takes the population time-series counts output by the ODEs and 
-	## calculates the average Separable Information from each species to every other 
-	## species. The goal is to get an overview of the major information pathways 
-	## in the web.   
-	#=============================================================================
-	# This function gives:
-	# si_web		Average separable information per species as a pairwise matrix
-	#=============================================================================
-	si_web[w] = list( get_si_web( pop_ts = floor(f1*out1[[w]]$out[nt1:tl,2:(nspp+1)]), 
-		k=k) )
+		#Invade
+		#ti = which(out_temp$out[ ,nRsp+3] == max(out_temp$out[,nRsp+3] ) )
+		ti = tl
+		winit =  out_temp$out[ti,2:(nspp+1)]
+		winit[inv_spp] = 4
+
+		#Invade new community
+		tryCatch( {out_temp2 = (food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
+		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
+		
+		a_temp =rbind(a_temp, out_temp$out, out_temp2$out)
 
 
-	#=============================================================================
-	# This section performs the same information theoretic calculations as above, 
-	# but in a region of dynamics corresponding to (ideally) equilibrium conditions. 
-	#=============================================================================
-	nt1e = tl/2
-	nt2e = tl
-	rweb1_eq[w] = list(rutledge_web( spp_list=c(nRsp,nCsp,nPsp), pop_ts = out1[[w]]$out[nt1e:tl,2:(nspp+1)],
-	spp_prms = out1[[w]]$spp_prms) )
-	di_web_eq[w] = list(get_info_dynamics(pop_ts = floor(out1[[w]]$out[nt1e:tl,2:(nspp+1)]), 
-		k=k,with_blocks=TRUE))
-	te_web_eq[w] = list( get_te_web( pop_ts = floor(out1[[w]]$out[nt1e:tl,2:(nspp+1)]), 
-		k=k) )
-	si_web_eq[w] = list( get_si_web( pop_ts = floor(out1[[w]]$out[nt1e:tl,2:(nspp+1)]), 
-		k=k) )
+		#Competition from competitor
+		#plot(out_temp2$out[1500:2000,(s+1)])
+		#ts1=log(out_temp2$out[1500:2000,(s+1)])
+		
+		#"Competition" from predator
+		# plot(out_temp2$out[50:300,(s+1)])
+		# ts1=log(out_temp2$out[50:300,(s+1)])
+		# ts2=1:length(ts1)
+		# summary(lm(ts1~ts2))
+	}
 
-	#=============================================================================
-	# This section performs the same information theoretic calculations as above, 
-	# but in a region of dynamics corresponding to (ideally) transient conditions. 
-	#=============================================================================
-	nt1t = 1
-	nt2t = 1000
-	rweb1_tr[w] = list(rutledge_web( spp_list=c(nRsp,nCsp,nPsp), pop_ts = out1[[w]]$out[nt1t:nt2t,2:(nspp+1)],
-	spp_prms = out1[[w]]$spp_prms) )
-	di_web_tr[w] = list(get_info_dynamics(pop_ts = floor(out1[[w]]$out[nt1t:nt2t,2:(nspp+1)]), 
-		k=k,with_blocks=TRUE))
-	te_web_tr[w] = list( get_te_web( pop_ts = floor(out1[[w]]$out[nt1t:nt2t,2:(nspp+1)]), 
-		k=k) )
-	si_web_tr[w] = list( get_si_web( pop_ts = floor(out1[[w]]$out[nt1t:nt2t,2:(nspp+1)]), 
-		k=k) )
+	out_inv1 [[w]] = a_temp
+	  #=============================================================================
+	  # Information processing networks
+	  #=============================================================================
+	  ## This code takes the population time-series counts output by the ODEs and 
+	  ## calculates Excess Entropy, Active Information Storage, and Transfer Entropy.
+	  ## Each quantity is calculated at both the average and local level.  
+	  #=============================================================================
+	  # This function gives:
+	  # EE_mean   Average mutual information per species
+	  # AI_mean   Average active information per species
+	  # TE_mean   Average transfer entropy per species
+	  # 
+	  # EE_local    Local mutual information per species
+	  # AI_local    Local active information per species
+	  # TE_local    Local transfer entropy per species
+	  #=============================================================================
+	  #Set k, the block size: 
+	  k=2
+	  #Get the populations of both species
+	  f1=1 #scaling term
+	  pop_ts = ceiling(f1*out_inv1[[w]])
+	  
+	  nt1 = 1
+	  nt2 = dim(pop_ts)[1]
+	  if(nt2 <=k){ k = 1}
 
+	  if(nt1 != nt2) { 
+
+	    f1 = 1 #scaling factor
+	    di_web[w] = list(get_info_dynamics(pop_ts = pop_ts , k=k,with_blocks=TRUE))
+
+	    ## This code takes the population time-series counts output by the ODEs and 
+	    ## calculates the average Transfer Entropy from each species to every other 
+	    ## species. The goal is to get an overview of the major information pathways 
+	    ## in the web.   
+	    #=============================================================================
+	    # This function gives:
+	    # te_web    Average transfer entropy per species as a pairwise matrix
+	    #=============================================================================
+	    te_web[w] = list( get_te_web( pop_ts = pop_ts, k=k) )
+
+	    #=============================================================================
+	    # This function gives:
+	    # aiE_web    The AI of the entire ensemble, treated as a single time series. 
+	    #=============================================================================
+	    aiE_web[w] = list( get_ais (  series1 = pop_ts, k=k, ensemble = TRUE)    )
+
+	    #=============================================================================  
+	    #Build these back out into a data frame that includes all of the mesocosm,
+	    #treatment, and species information. 
+
+	    #Add the DIT to the data frames. There will be 11 new columns. 
+	    # DIT_tmp = matrix(0,nt2,11)
+	    # ncnames = c("N_res","N_inv","aiE","te1","te2","ee1","ee2","ai1","ai2","si1","si2")
+	    # DIT_tmp[,1:2] = as.matrix(pop_ts)
+	    # DIT_tmp[(k+1):nt2,3] = aiE_web[[index1]]$local
+	    # DIT_tmp[(k+1):nt2,4:5] = di_web[[index1]]$te_local
+	    # DIT_tmp[(k*2):nt2,6:7] = di_web[[index1]]$ee_local
+	    # DIT_tmp[(k+1):nt2,8:9] = di_web[[index1]]$ai_local
+	    # DIT_tmp[(k+1):nt2,10:11] = di_web[[index1]]$si_local
+	    # colnames(DIT_tmp) = ncnames
+	    # DIT_tmp = as.data.frame(DIT_tmp) 
+	    # out1[[index1]] = out1[[index1]] %>% left_join(DIT_tmp)
+
+	}
 }
-
 save(file = "scen_fwebmod6Rand.var", out1, rweb1, di_web,te_web,si_web, 
 	rweb1_eq, di_web_eq,te_web_eq,si_web_eq, 
 	rweb1_tr, di_web_tr,te_web_tr,si_web_tr)
@@ -313,7 +275,9 @@ nRsp = out1[[w]]$spp_prms$nRsp
 nCsp = out1[[w]]$spp_prms$nCsp
 nPsp = out1[[w]]$spp_prms$nPsp
 #tlg = tend/delta1
-tlg = tl
+#tlg = tl
+tlg = 45
+
 
 par(mfrow=c(3,1))
 #Resource species in RED
@@ -324,9 +288,12 @@ lines(out[1:tlg,n],t="l",col="red")
 
 #Consumer species in BLUE 
 plot(out[1:tlg,nRsp+2],t="l",col="blue",ylim = c(0,max(out[1:tlg,(nRsp+2):(nRsp+nCsp+1)],na.rm=T)))
+points( (daph_tmp$day_n - 28), daph_tmp$N)
 for( n in (nRsp+2):(nRsp+nCsp+1)  ) {
 lines(out[1:tlg,n],t="l",col="blue")
+points( (dia_tmp$day_n - 28), dia_tmp$N,col="blue")
 }
+
 
 #Predator species in BLACK
 plot(out[1:tlg,paste(nRsp+nCsp+1)],t="l",ylim = c(0,max(out[1:tlg,(nRsp+nCsp+2):(nspp+1)],na.rm=T)))
