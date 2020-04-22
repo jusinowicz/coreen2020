@@ -32,7 +32,7 @@ source("./functions/info_theory_functions.R")
 #=============================================================================
 
 #Length and time steps of each model run
-tend = 50
+tend = 100
 delta1 = 0.01
 tl=tend/delta1
 
@@ -42,7 +42,7 @@ k= 2
 
 ###Build a series of scenarios going from simple to more complex dynamics
 #Number of food webs to generate
-nwebs = 5
+nwebs = 3
 # scenarios = list(matrix(0,nwebs,1))
 
 ###
@@ -67,7 +67,7 @@ aiE_web = vector("list",nwebs)
  amp1 = 100000 #1/exp(1)
 #Random consumers
  c2 = 1
- amp2 = 0.5 #1/exp(1)
+ amp2 = 0.1 #1/exp(1)
  res_R = c(amp1,c1,amp2,c2)
 
  # c = 0
@@ -254,13 +254,14 @@ for (w in 1:nwebs){
 }
 
 ##Recursively flatten this into a data frame. 
-mDIT_tmp = data.frame(matrix( nrow=0, ncol =( (nRsp+nCsp)*5+2) )) 
+mDIT_tmp = data.frame(matrix( nrow=0, ncol =( (nRsp+nCsp)*5+4) )) 
 ncnames = c("Algae", "Daphnia","Diaphanosoma","aiE","te1","te2", "te3","ee1","ee2",
-	"ee3","ai1","ai2","ai3","si1","si2","si3","run")
+	"ee3","ai1","ai2","ai3","si1","si2","si3","run","mesocosm","nspp")
 colnames(mDIT_tmp) = ncnames
-
+mesocosms = factor(c("A","B")) #A is Daphnia invader, B is Daphnia resident
+nspp = factor(c(1,2)) #1 is the pre-invasion phase, 2 is post-invasion phase
 for (f in 1:nwebs){
-	 DIT_tmp = matrix(0,nt2,( (nRsp+nCsp)*5+2) )
+	 DIT_tmp = data.frame(matrix(0,nt2,( (nRsp+nCsp)*5+4) ))
      DIT_tmp[,1:3] = as.matrix(out_inv1[[f]][,2:4])
      DIT_tmp[(k+1):nt2,4] = aiE_web[[f]]$local
      DIT_tmp[(k+1):nt2,5:7] = di_web[[f]]$te_local[,2:4]
@@ -268,12 +269,24 @@ for (f in 1:nwebs){
      DIT_tmp[(k+1):nt2,11:13] = di_web[[f]]$ai_local[,2:4]
      DIT_tmp[(k+1):nt2,14:16] = di_web[[f]]$si_local[,2:4]
      DIT_tmp[,17] = f
+
+     DIT_tmp[,18] = factor(levels = levels(mesocosms))
+     DIT_tmp[1:nt2/2,18] = mesocosms[1]
+     DIT_tmp[(nt2/2+1):nt2,18] = mesocosms[2]
+
+     spp1 = c(1:(nt2/4),(nt2/2+1):(nt2/2+nt2/4))
+     spp2 = c((nt2/4+1):(nt2/2),(nt2/2+nt2/4+1):nt2)
+     DIT_tmp[,19] = factor(levels = levels(nspp))
+     DIT_tmp[spp1,19] = nspp[1]
+     DIT_tmp[spp2,19] = nspp[2]
+
      colnames(DIT_tmp) = ncnames
      DIT_tmp = as.data.frame(DIT_tmp) 
      mDIT_tmp = rbind(mDIT_tmp,DIT_tmp)
 }
 
 #Add the time column
+#mDIT = cbind(time = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1), mDIT_tmp)
 mDIT = cbind(time = matrix(seq(0,tend,delta1),dim(mDIT_tmp)[1],1), mDIT_tmp)
 a1 = exp((mDIT$Algae-lag(mDIT$Algae))/(
 	(mDIT$Daphnia+mDIT$Diaphanosoma)-( lag(mDIT$Daphnia)+lag(mDIT$Diaphanosoma) )))
@@ -285,8 +298,18 @@ a1[is.infinite(a1)] = 0
 # 	(Daphnia+Diaphanosoma)-( lag(Daphnia)+lag(Diaphanosoma) )  ) ) )+
 ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =(Algae-lag(Algae))/( 
 	(Daphnia- lag(Daphnia) )  ) ) )+
-ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =(spp_prms$Kr-lag(Algae))/( 
-	(Daphnia )  ) ) )+
+ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =(c(spp_prms$Kr)-Algae)/( 
+	(Daphnia )  ),  color = interaction(run,mesocosm,nspp ) ) )+
+ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =(c(spp_prms$Kr)-Algae)/( 
+	(Daphnia )  ),  color = run ) )+  facet_grid(mesocosm~nspp)   +
+
+ggplot()+ geom_line(data= mDIT, mapping= aes(x = time, y =Daphnia,  
+	color = run ) )+  facet_grid(mesocosm~nspp)   +
+geom_line(data= mDIT, mapping= aes(x = time, y =aiE,  
+	color = run ) )+  facet_grid(mesocosm~nspp) 
+ggplot()+ geom_line(data= mDIT, mapping= aes(x = time, y =Daphnia,
+	color = interaction(run,mesocosm,nspp ) ) )   +
+	geom_point(data= mDIT, mapping= aes(x = time, y =aiE ) )+
   xlab("Active information (bits) ")+
   ylab("Algal consumption per individual")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
