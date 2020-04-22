@@ -201,7 +201,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 					#dC[i] = C[i] *rC[i] * (1 - C[i]/Kc[i])
 					
 					#Logistic growth with consumption rate, cl_daph/cl_dia
-					dC[i] = b[[i]](times)+( (C[i] *cC[,i]*rC[i])%*%R ) * (1 - C[i]/Kc[i])
+					dC[i] = ( (C[i] *cC[,i]*rC[i])%*%R ) * (b[[i]](times) - C[i]/Kc[i])
 					
 					#Etc
 					#dC[i] = C[i] * ( rC[i] *(eFc[i]*cC[,i])%*%((R-R^2/Ki)) -muC[i] )
