@@ -7,3 +7,4 @@ figures/
 .bash_profile
 *.numbers
 *.pdf
+*.var
