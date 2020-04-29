@@ -298,16 +298,17 @@ a1[is.infinite(a1)] = 0
 # save(file="daphDia_DIT_20_v01.var", "mDIT", "out1","out_inv1","di_web",
 # 	"te_web","si_web", "aiE_web")
 #save(file="daphDia_DIT_20_v00.var", "mDIT", "out1","out_inv1","di_web",
-	"te_web","si_web", "aiE_web")
+#	"te_web","si_web", "aiE_web")
 #Load saved files
 #load("daphDia_DIT_100.var")
-load("daphDia_DIT_20_v00B.var")
+#load("daphDia_DIT_20_v00B.var")
+#load("daphDia_DIT_20_v01.var")
 
 #Add some new columns to the data: 
 mDIT$alg_perDaph = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$Daphnia
 mDIT$alg_perDaph[is.infinite(mDIT$alg_perDaph)] = 0
 
-mDIT$alg_perDia = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$Daphnia
+mDIT$alg_perDia = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$Diaphanosoma
 mDIT$alg_perDia[is.infinite(mDIT$alg_perDia)] = 0
 
 mDIT$zoo = mDIT$Daphnia+mDIT$Diaphanosoma
@@ -316,17 +317,15 @@ mDIT$alg_perzoo = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$zoo
 mDIT$alg_perzoo[is.infinite(mDIT$alg_perzoo)] = 0
 
 #Delta columns: 
-mDIT$alg_per_DDaph = (mDIT$Daphnia-lag(mDIT$Daphnia))/
-	(mDIT$Daphnia *spp_prms$cC[1,1]*spp_prms$rC[1]*mDIT$Algae)
+mDIT$alg_per_DDaph = (c(spp_prms$Kr)-mDIT$Algae)/c(NA,diff(mDIT$Daphnia))
+	#(mDIT$Daphnia *spp_prms$cC[1,1]*spp_prms$rC[1]*mDIT$Algae)
 mDIT$alg_per_DDaph[is.infinite(mDIT$alg_per_DDaph)] = 0
 
-mDIT$alg_per_DDia = (mDIT$Diaphanosoma-lag(mDIT$Diaphanosoma))/
-	(mDIT$Dia *spp_prms$cC[1,2]*spp_prms$rC[2]*mDIT$Algae)
+mDIT$alg_per_DDia = (c(spp_prms$Kr)-mDIT$Algae)/c(NA,diff(mDIT$Diaphanosoma))
+	#(mDIT$Dia *spp_prms$cC[1,2]*spp_prms$rC[2]*mDIT$Algae)
 mDIT$alg_per_DDia[is.infinite(mDIT$alg_per_DDia)] = 0
 
-mDIT$alg_per_Dzoo = (mDIT$zoo-lag(mDIT$zoo))/
-	(mDIT$Daphnia *spp_prms$cC[1,1]*spp_prms$rC[1]*mDIT$Algae + 
-		mDIT$Dia *spp_prms$cC[1,2]*spp_prms$rC[2]*mDIT$Algae)
+mDIT$alg_per_Dzoo = (c(spp_prms$Kr)-mDIT$Algae)/c(NA,diff(mDIT$zoo))
 mDIT$alg_per_Dzoo[is.infinite(mDIT$alg_per_Dzoo)] = 0
 
 
@@ -347,23 +346,45 @@ ggplot()+ geom_point(data= mDIT, mapping= aes(x = time, y =Daphnia,  color = tim
 	facet_grid(mesocosm~nspp)  +  ylim(50000,250000)
 ggplot()+ geom_point(data= mDIT[mDIT$time<5,], mapping= aes(x = time, y =Daphnia,  color = time ) )+  
 	facet_grid(mesocosm~nspp)   + ylim(50000,250000)
+
 #Pop and aiE
 ggplot()+ geom_point(data= mDIT, mapping= aes(x = time, y =Daphnia,  color = time ) )+  
 	geom_point(data= mDIT, mapping= aes(x = time, y =aiE,  color = time ) )+  
 	facet_grid(mesocosm~nspp) 
+
 #When the var in Zoo is 0, aiE is driven by Algae: 
 ggplot()+ geom_point(data= mDIT, mapping= aes(x = time, y =Algae, 
  	color = time ) )+  facet_grid(mesocosm~nspp)
 
-#Relative to perturbation of algal consumed per Daphnia
+#Relative to perturbation of algae consumed per Daphnia
 #Raw with mean
+#Normal
+ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =(alg_perDaph), 
+ 	color = time ) )+ 
+	geom_line(data= mDIT, mapping= aes(x = aiE, y =m_alg_perDaph, 
+ 	color = time ))  + facet_grid(mesocosm~nspp) 
+#Difference
 ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =(alg_per_DDaph), 
- 	color = time ) )+ geom_point(data= mDIT, mapping= aes(x = time, y =Daphnia, 
- 	color = time ) ) +
+ 	color = time ) )+ 
 	geom_line(data= mDIT, mapping= aes(x = aiE, y =m_alg_perDaph, 
  	color = time ))  + facet_grid(mesocosm~nspp) 
 
+#Pop vs. consumption
+#Normal
+ggplot()+ geom_point(data= mDIT, mapping= aes(x = Daphnia, y =(alg_perDaph), 
+ 	color = time ) )+ facet_grid(mesocosm~nspp) 
+#Difference
+ggplot()+ geom_point(data= mDIT, mapping= aes(x = Daphnia, y =(alg_per_DDaph), 
+ 	color = time ) )+ facet_grid(mesocosm~nspp) 
 
+#aiE vs. consumption
+ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =alg_perDaph, 
+ 	color = time ) )+
+	geom_line(data= mDIT, mapping= aes(x = aiE, y =m_alg_perDaph, 
+ 	color = time ))+
+ 	facet_grid(mesocosm~nspp)+  ylim(50000,250000)
+
+#multiple
 ggplot()+ geom_point(data= mDIT1, mapping= aes(x = aiE, y =alg_perDaph, 
  	color = time ) )+
 	geom_line(data= mDIT1, mapping= aes(x = aiE, y =m_alg_perDaph, 
@@ -378,21 +399,24 @@ ggplot()+ geom_point(data= mDIT1, mapping= aes(x = aiE, y =alg_perDaph,
 # 	geom_line(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =m_alg_perDaph, 
 #  	color = time ))+ylim(50000,250000)
 #Absolute, mean subtracted
-ggplot()+ geom_point(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =abs(alg_perDaph-m_alg_perDaph), 
+ggplot()+ geom_point(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =(alg_perDaph-m_alg_perDaph), 
  	color = time ) )+  facet_grid(mesocosm~nspp)
 
+#************************************************
 #More complex the further it is perturbed from K? 
+#************************************************
+#Absolute, mean subtracted
+# ggplot()+ geom_point(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =abs(m_Daph-Daphnia), 
+#  	color = time ) )+  facet_grid(mesocosm~nspp)
+ggplot()+ geom_point(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =abs(m_Daph-Daphnia), 
+ 	color = time ) )+  facet_grid(mesocosm~nspp)
+ggplot()+ geom_point(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =(spp_prms$Kc[1,1]-Daphnia), 
+ 	color = time ) )+  facet_grid(mesocosm~nspp)
+####
 ggplot()+ geom_point(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =Daphnia, 
  	color = time ) )+  facet_grid(mesocosm~nspp) + 
 	geom_line(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =m_Daph, 
  	color = time ))+ylim(50000,250000)
-#Absolute, mean subtracted
-# ggplot()+ geom_point(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =abs(m_Daph-Daphnia), 
-#  	color = time ) )+  facet_grid(mesocosm~nspp)
-ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =abs(m_Daph-Daphnia), 
- 	color = time ) )+  facet_grid(mesocosm~nspp)
-
-
 
 #Fot total zooplankton: 
 #Consumption
