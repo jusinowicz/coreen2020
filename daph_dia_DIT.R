@@ -314,11 +314,27 @@ for (i in 1:nmesos) {
 #Take all of the new data and combine it into one data frame: 
 m1_DIT = bind_rows(out1, .id = "column_label")
 m1_DIT=m1_DIT %>%
- mutate(alg_per_N = algae_abundance/N)  #"lead" lines up the result
+ mutate(alg_per_N = (10E6-algae_abundance)/N)  #"lead" lines up the result
 m1_DIT=m1_DIT %>%
- mutate(alg_per_Ndiff = algae_abundance/lead( N-lag(N),)) 
+ mutate(alg_per_Ndiff = (10E6-algae_abundance)/lead( N-lag(N),)) 
 m1_DIT$alg_per_N[is.infinite(m1_DIT$alg_per_N)] = NA
 m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
+
+
+#Pop and aiE
+m1_DIT%>% ggplot()+ 
+  geom_point( aes(x = day_n, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
+  geom_line( aes(x = day_n, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)
+
+ 
+
+
+ggplot()+ geom_point(data= m1_DIT, mapping= aes(x = N, y =(alg_per_N), 
+  color = species ) )+ facet_grid(temperature~species) 
+
+ggplot()+ geom_point(data= m1_DIT, mapping= aes(x = aiE, y =(alg_per_N), 
+  color = species ) )+ facet_grid(temperature~species) 
 
 
 #=============================================================================
