@@ -260,8 +260,17 @@ for (i in 1:nmesos) {
   k=2
   #Get the populations of both species
   f1=1 #scaling term
-  pop_ts = floor(f1*out1[[index1]][c("N_res","N_inv")])
-  
+
+  #Take the time series and interpolate missing days:
+  pop_temp = floor(f1*out1[[index1]][c("day_n","N_res","N_inv")])
+  new_days = data.frame(day_n = seq(min(pop_temp$day_n),max(pop_temp$day_n,1) ) )
+  pop_ts = new_days %>% left_join(pop_temp)
+  pop_ts["N_res"] = na.approx(pop_ts["N_res"])
+  pop_ts["N_inv"] = na.approx(pop_ts["N_inv"])
+
+  #This is the old way, without interpolating missing days: 
+  # pop_ts = floor(f1*out1[[index1]][c("N_res","N_inv")])
+
   nt1 = 1
   nt2 = dim(pop_ts)[1]
   if(nt2 <=k){ k = 1}
@@ -321,20 +330,38 @@ m1_DIT$alg_per_N[is.infinite(m1_DIT$alg_per_N)] = NA
 m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
 
 
-#Pop and aiE
+#=============================================================================
+#Some basic plots to start thinking: 
+#=============================================================================
+#Time series of Pop and aiE
 m1_DIT%>% ggplot()+ 
   geom_point( aes(x = day_n, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
   geom_line( aes(x = day_n, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
   facet_grid(temperature~invade_monoculture)
 
- 
+#Pop and consumption
+m1_DIT%>% ggplot()+ 
+  geom_point( aes(x = N, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
+  geom_line( aes(x = N, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)
+
+#Pop and aiE
+m1_DIT%>% ggplot()+ 
+  geom_point( aes(x = N, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
+  #geom_line( aes(x = N, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)
+
+m1_DIT%>% ggplot()+ 
+  geom_point( aes(x = aiE, y =N,  color = species, group = interaction(species,replicate_number) ) )+  
+  #geom_line( aes(x = N, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)
 
 
-ggplot()+ geom_point(data= m1_DIT, mapping= aes(x = N, y =(alg_per_N), 
-  color = species ) )+ facet_grid(temperature~species) 
-
-ggplot()+ geom_point(data= m1_DIT, mapping= aes(x = aiE, y =(alg_per_N), 
-  color = species ) )+ facet_grid(temperature~species) 
+#AIE and consumption
+m1_DIT%>% ggplot()+ 
+  geom_point( aes(x = aiE, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
+  #geom_line( aes(x = ai1, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)
 
 
 #=============================================================================
