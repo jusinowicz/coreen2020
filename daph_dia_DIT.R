@@ -21,8 +21,8 @@
 library(tidyverse)
 library(lubridate)
 library(mgcv)
-library(gamm4)
 library(fields)
+library(zoo)
 source("./functions/info_theory_functions.R")
 #=============================================================================
 #Load data
@@ -267,9 +267,10 @@ for (i in 1:nmesos) {
   pop_ts = new_days %>% left_join(pop_temp)
   pop_ts["N_res"] = na.approx(pop_ts["N_res"])
   pop_ts["N_inv"] = na.approx(pop_ts["N_inv"])
+  pop_ts = pop_ts[c("N_res","N_inv")]
 
   #This is the old way, without interpolating missing days: 
-  # pop_ts = floor(f1*out1[[index1]][c("N_res","N_inv")])
+  #pop_ts = floor(f1*out1[[index1]][c("N_res","N_inv")])
 
   nt1 = 1
   nt2 = dim(pop_ts)[1]
