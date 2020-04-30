@@ -154,7 +154,7 @@ aiE_web = vector("list",nmesos)
 #Loop over all mesocosms
 for (i in 1:nmesos) {
 
-  index1=i
+
   #=============================================================================
   #Make new resident and invader data sets.
   #=============================================================================
@@ -222,22 +222,58 @@ for (i in 1:nmesos) {
     #mydata_res = subset(res_tmp, day_n >= inv_day  ) #Only days after invasion
     mydata_res = res_tmp
     mydata_res$N_inv = 0
-    out1[[index1]] = mydata_res[!is.na(mydata_res$N_res), ]
-  
+    out1[[i]] = mydata_res[!is.na(mydata_res$N_res), ]
+
+    #Take the time series and interpolate missing days:
+    new_days = data.frame(day_n = seq(min(out1[[i]]$day_n),max(out1[[i]]$day_n,1) ),
+             species = out1[[i]]$species[1], replicate_number = out1[[i]]$replicate_number[1],  
+             invade_monoculture = out1[[i]]$invade_monoculture[1], 
+             temperature= out1[[i]]$temperature[1], mesocosm_id =out1[[i]]$mesocosm_id[1] )
+
+    out_tmp = new_days %>% left_join(out1[[i]][,7:24])
+    #Try an NA interpolation on every column (this doesn't always work, hence the 
+    #obnoxious tryCatch for loop)  
+    for (j in 7:23){  tryCatch({ out_tmp[,j] = na.approx(out_tmp[,j])}, error = function(e) {} )}
+    out1[[i]] = out_tmp
 
   } else if (dim(res_tmp)[1] <=0  ){
     #New population, diff,algal, and body size data
     #mydata_inv = subset(inv_tmp, day_n >= inv_day  )#Only days after invasion
     mydata_inv = inv_tmp
     mydata_inv$N_res = 0
-    out1[[index1]] = mydata_inv[!is.na(mydata_res$N_inv), ]
+    out1[[i]] = mydata_inv[!is.na(mydata_res$N_inv), ]
+
+    #Take the time series and interpolate missing days:
+    new_days = data.frame(day_n = seq(min(out1[[i]]$day_n),max(out1[[i]]$day_n,1) ),
+             species = out1[[i]]$species[1], replicate_number = out1[[i]]$replicate_number[1],  
+             invade_monoculture = out1[[i]]$invade_monoculture[1], 
+             temperature= out1[[i]]$temperature[1], mesocosm_id =out1[[i]]$mesocosm_id[1] )
+
+    out_tmp = new_days %>% left_join(out1[[i]][,7:24])
+    #Try an NA interpolation on every column (this doesn't always work, hence the 
+    #obnoxious tryCatch for loop)  
+    for (j in 7:23){  tryCatch({ out_tmp[,j] = na.approx(out_tmp[,j])}, error = function(e) {} )}
+    out1[[i]] = out_tmp
 
   } else {
     #New population, diff,algal, and body size data
     #mydata_inv = subset(inv_tmp, day_n >= inv_day  )#Only days after invasion
     mydata_inv= inv_tmp
-    out1[[index1]] = mydata_inv[!is.na(mydata_inv$N_inv) & 
+    out1[[i]] = mydata_inv[!is.na(mydata_inv$N_inv) & 
       !is.na(mydata_inv$N_res) , ]
+    
+    #Take the time series and interpolate missing days:
+    new_days = data.frame(day_n = seq(min(out1[[i]]$day_n),max(out1[[i]]$day_n,1) ),
+             species = out1[[i]]$species[1], replicate_number = out1[[i]]$replicate_number[1],  
+             invade_monoculture = out1[[i]]$invade_monoculture[1], 
+             temperature= out1[[i]]$temperature[1], mesocosm_id =out1[[i]]$mesocosm_id[1] )
+
+    out_tmp = new_days %>% left_join(out1[[i]][,7:24])
+    #Try an NA interpolation on every column (this doesn't always work, hence the 
+    #obnoxious tryCatch for loop)  
+    for (j in 7:23){  tryCatch({ out_tmp[,j] = na.approx(out_tmp[,j])}, error = function(e) {} )}
+    out1[[i]] = out_tmp
+
   } 
   
   #=============================================================================
@@ -262,15 +298,15 @@ for (i in 1:nmesos) {
   f1=1 #scaling term
 
   #Take the time series and interpolate missing days:
-  pop_temp = floor(f1*out1[[index1]][c("day_n","N_res","N_inv")])
-  new_days = data.frame(day_n = seq(min(pop_temp$day_n),max(pop_temp$day_n,1) ) )
-  pop_ts = new_days %>% left_join(pop_temp)
-  pop_ts["N_res"] = na.approx(pop_ts["N_res"])
-  pop_ts["N_inv"] = na.approx(pop_ts["N_inv"])
-  pop_ts = pop_ts[c("N_res","N_inv")]
+  # pop_temp = floor(f1*out1[[i]][c("day_n","N_res","N_inv")])
+  # new_days = data.frame(day_n = seq(min(pop_temp$day_n),max(pop_temp$day_n,1) ) )
+  # pop_ts = new_days %>% left_join(pop_temp)
+  # pop_ts["N_res"] = na.approx(pop_ts["N_res"])
+  # pop_ts["N_inv"] = na.approx(pop_ts["N_inv"])
+  # pop_ts = pop_ts[c("N_res","N_inv")]
 
   #This is the old way, without interpolating missing days: 
-  #pop_ts = floor(f1*out1[[index1]][c("N_res","N_inv")])
+  pop_ts = floor(f1*out1[[i]][c("N_res","N_inv")])
 
   nt1 = 1
   nt2 = dim(pop_ts)[1]
@@ -279,7 +315,7 @@ for (i in 1:nmesos) {
   if(nt1 != nt2) { 
 
     f1 = 1 #scaling factor
-    di_web[index1] = list(get_info_dynamics(pop_ts = pop_ts , k=k,with_blocks=TRUE))
+    di_web[i] = list(get_info_dynamics(pop_ts = pop_ts , k=k,with_blocks=TRUE))
 
     ## This code takes the population time-series counts output by the ODEs and 
     ## calculates the average Transfer Entropy from each species to every other 
@@ -289,13 +325,13 @@ for (i in 1:nmesos) {
     # This function gives:
     # te_web    Average transfer entropy per species as a pairwise matrix
     #=============================================================================
-    te_web[index1] = list( get_te_web( pop_ts = pop_ts, k=k) )
+    te_web[i] = list( get_te_web( pop_ts = pop_ts, k=k) )
 
     #=============================================================================
     # This function gives:
     # aiE_web    The AI of the entire ensemble, treated as a single time series. 
     #=============================================================================
-    aiE_web[index1] = list( get_ais (  series1 = pop_ts, k=k, ensemble = TRUE)    )
+    aiE_web[i] = list( get_ais (  series1 = pop_ts, k=k, ensemble = TRUE)    )
 
     #=============================================================================  
     #Build these back out into a data frame that includes all of the mesocosm,
@@ -305,14 +341,14 @@ for (i in 1:nmesos) {
     DIT_tmp = matrix(0,nt2,11)
     ncnames = c("N_res","N_inv","aiE","te1","te2","ee1","ee2","ai1","ai2","si1","si2")
     DIT_tmp[,1:2] = as.matrix(pop_ts)
-    DIT_tmp[(k+1):nt2,3] = aiE_web[[index1]]$local
-    DIT_tmp[(k+1):nt2,4:5] = di_web[[index1]]$te_local
-    DIT_tmp[(k*2):nt2,6:7] = di_web[[index1]]$ee_local
-    DIT_tmp[(k+1):nt2,8:9] = di_web[[index1]]$ai_local
-    DIT_tmp[(k+1):nt2,10:11] = di_web[[index1]]$si_local
+    DIT_tmp[(k+1):nt2,3] = aiE_web[[i]]$local
+    DIT_tmp[(k+1):nt2,4:5] = di_web[[i]]$te_local
+    DIT_tmp[(k*2):nt2,6:7] = di_web[[i]]$ee_local
+    DIT_tmp[(k+1):nt2,8:9] = di_web[[i]]$ai_local
+    DIT_tmp[(k+1):nt2,10:11] = di_web[[i]]$si_local
     colnames(DIT_tmp) = ncnames
     DIT_tmp = as.data.frame(DIT_tmp) 
-    out1[[index1]] = out1[[index1]] %>% left_join(DIT_tmp)
+    out1[[i]] = out1[[i]] %>% left_join(DIT_tmp)
 
   }
 
