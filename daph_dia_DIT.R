@@ -380,7 +380,7 @@ m1_DIT%>% ggplot()+
 m1_DIT%>% ggplot()+ 
   geom_point( aes(x = N, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
   geom_line( aes(x = N, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
-  facet_grid(temperature~invade_monoculture)
+  facet_grid(temperature~invade_monoculture)+ylim(0,1E7)
 
 #Pop and aiE
 m1_DIT%>% ggplot()+ 
@@ -398,7 +398,7 @@ m1_DIT%>% ggplot()+
 m1_DIT%>% ggplot()+ 
   geom_point( aes(x = aiE, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
   #geom_line( aes(x = ai1, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
-  facet_grid(temperature~invade_monoculture)
+  facet_grid(temperature~invade_monoculture)+ylim(0,2E7)
 
 
 #=============================================================================
