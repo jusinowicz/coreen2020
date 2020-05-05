@@ -170,7 +170,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 			rR = spp_prms$rR, Kr =spp_prms$Kr, Kc =spp_prms$Kc,
 			rC = spp_prms$rC, eFc = spp_prms$eFc, muC = spp_prms$muC, cC = spp_prms$cC,
 			rP = spp_prms$rP, eFp = spp_prms$eFp, muP = spp_prms$muP, cP = spp_prms$cP,
-			a = a
+			a = a, b=b
 		 )
 
 
