@@ -23,6 +23,9 @@
 #=============================================================================
 library(deSolve)
 library(fields)
+library(gridExtra)
+library(tidyverse)
+library(plyr)
 source("./functions/food_web_functions.R")
 source("./functions/info_theory_functions.R")
 
@@ -353,7 +356,7 @@ mDIT=ddply(mDIT, mesocosm~nspp, transform,
 # ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =(Algae-lag(Algae))/( 
 # 	(Daphnia+Diaphanosoma)-( lag(Daphnia)+lag(Diaphanosoma) )  ) ) )+
 #Just pop plots
-ggplot()+ geom_point(data= mDIT1, mapping= aes(x = time, y =Daphnia,  color = time ) )+  
+ggplot()+ geom_point(data= mDIT, mapping= aes(x = time, y =Daphnia,  color = time ) )+  
 	geom_point(data= mDIT, mapping= aes(x = time, y =Diaphanosoma,  color = time ) )+  
 	facet_grid(mesocosm~nspp)  +  ylim(50000,250000)
 ggplot()+ geom_point(data= mDIT[mDIT$time<5,], mapping= aes(x = time, y =Daphnia,  color = time ) )+  
@@ -363,6 +366,20 @@ ggplot()+ geom_point(data= mDIT[mDIT$time<5,], mapping= aes(x = time, y =Daphnia
 ggplot()+ geom_point(data= mDIT[mDIT$time<2,], mapping= aes(x = time, y =Daphnia,  color = time ) )+  
 	geom_line(data= mDIT[mDIT$time<2,], mapping= aes(x = time, y =ai1,  color = time ) )+  
 	facet_grid(mesocosm~nspp) 
+
+
+ggplot()+ geom_line(data= mDIT[mDIT$time<1.5,], mapping= aes(x = time, y =Daphnia,color="1") )+  
+		  geom_point(data= mDIT[mDIT$time<1.5,], mapping= aes(x = time, y =ai1,color="2" ) )+ 
+		  geom_line(data= mDIT[mDIT$time<1.5,], mapping= aes(x = time, y =(alg_perDaph)/2E5,color="3"))+
+		  scale_color_discrete(name ="", labels = c("Daphnia", "AI", "algal cost per Daph"))+
+facet_grid(mesocosm~nspp)
+ggsave("./Daph_ai1_algalperDaph_think1.pdf", width = 8, height = 10)
+
+
+ggplot()+geom_point(data= mDIT[mDIT$time<2,], mapping= aes(x = ai1, y =(alg_perDaph)/2E5) )+
+facet_grid(mesocosm~nspp) 
+ggsave("./ai1_algalperDaph_think1.pdf", width = 8, height = 10)
+
 
 #When the var in Zoo is 0, aiE is driven by Algae: 
 ggplot()+ geom_point(data= mDIT, mapping= aes(x = time, y =Algae, 
@@ -389,8 +406,10 @@ ggplot()+ geom_point(data= mDIT, mapping= aes(x = Daphnia, y =(alg_perDaph),
 ggplot()+ geom_point(data= mDIT, mapping= aes(x = Daphnia, y =(alg_per_DDaph), 
  	color = time ) )+ facet_grid(mesocosm~nspp) 
 
+#********************
 #aiE vs. consumption
-ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =alg_perDaph, 
+#*********************
+ggplot()+ geom_point(data= mDIT2, mapping= aes(x = aiE, y =alg_perDaph, 
  	color = time ) )+
 	geom_line(data= mDIT, mapping= aes(x = aiE, y =m_alg_perDaph, 
  	color = time ))+
@@ -485,5 +504,114 @@ ggplot()+ geom_line(data= mDIT, mapping= aes(x = time, y =Daphnia,
   ylab("Algal consumption per individual")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 ggsave("./aiE_algalperN_theory.pdf", width = 8, height = 10)
+
+
+#=============================================================================
+#Plots in combination with the real data
+# m1_DIT is the real data
+# mDIT is the simulation data
+#=============================================================================
+m1_DIT_sub = subset(m1_DIT, species == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, mesocosm == "A" & nspp == 2) #Daphnia invasion 
+
+p1 = ggplot()+ geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=N, group = mesocosm_id,color="1" )) +
+	geom_line(data=mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =Daphnia,  color = "2") )+
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+  	ylab("Population (Daphnia")+
+  	theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+p2 = ggplot() + geom_point(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=ai1, color="1" )) +
+	geom_point(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =ai2,  color = "2" ) ) +
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+  	ylab("Bits (AI) ")+
+  	theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+p3 = ggplot()+ geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=alg_per_N, group = mesocosm_id,,color="1" )) +
+	geom_line(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =(alg_perDaph), color="2") )+
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+	xlab("Day")+
+  	ylab("Algae consumed per N ")
+
+gp1 = ggplotGrob(p1)
+gp2 = ggplotGrob(p2)
+gp3 = ggplotGrob(p3)
+grid.draw(rbind(gp1, gp2,gp3))
+
+#To save as a PDF
+pdf("./Daph_exp_v_simv1_a1_all_long.pdf",width = 8, height = 10)
+grid.draw(rbind(gp1, gp2,gp3))
+dev.off()
+
+
+#################
+#efficiency, 3 panels
+
+m1_DIT_sub = subset(m1_DIT, species == "daphnia" & temperature == 28 ) #Daphnia at 28 C
+mDIT_sub = subset(mDIT, mesocosm == "A" & nspp == 2) #Daphnia invasion 
+
+p1 = ggplot()+ geom_point(data=m1_DIT_sub, mapping= aes(x= aiE, y=alg_per_N, group = mesocosm_id,color="1" )) +
+	geom_point(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = aiE, y =(alg_perDaph), color="2") ) +
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+	xlab("Bits (AI)")+
+  	ylab("Algae consumed per N ")
+
+p2 = ggplot()+ geom_point(data=m1_DIT_sub, mapping= aes(x= aiE, y=abs(mean(N) - N), group = mesocosm_id,color="1" )) +
+	geom_point(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = aiE, y =abs(mean(Daphnia)-Daphnia), color="2") ) +
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+	xlab("Bits (AI)")+
+  	ylab("abs(Distance from K) ")
+
+p3 = ggplot()+ geom_point(data=m1_DIT_sub, mapping= aes(x= N, y=alg_per_N, group = mesocosm_id,color="1" )) +
+	geom_point(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = Daphnia, y =(alg_perDaph), color="2") ) +
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+	xlab("Population N")+
+  	ylab("Algae consumed per N ")
+
+gp1 = ggplotGrob(p1)
+gp2 = ggplotGrob(p2)
+gp3 = ggplotGrob(p3)
+grid.draw(rbind(gp1, gp2,gp3))
+	
+
+p3 = ggplot()+ geom_point(data=m1_DIT_sub, mapping= aes(x= N, y=ai1, group = mesocosm_id,color="1" )) +
+	geom_point(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = Daphnia, y =ai2, color="2") ) +
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+	xlab("Day")+
+  	ylab("Algae consumed per N ")
+
+ggplot()+ geom_point(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =abs(m_Daph-Daphnia), 
+ 	color = time ) )+  facet_grid(mesocosm~nspp)
+ggplot()+ geom_point(data= mDIT[mDIT$time>2,], mapping= aes(x = aiE, y =(spp_prms$Kc[1,1]-Daphnia), 
+ 	color = time ) )
+
+####
+#For Diaphanosoma:
+m1_DIT_sub = subset(m1_DIT, species == "diaphanosoma" & temperature == 28& invade_monoculture == "dia invade") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, mesocosm == "B" & nspp == 2) #Daphnia invasion 
+
+p1 = ggplot()+ geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=N, group = mesocosm_id,color="1" )) +
+	geom_line(data=mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =Diaphanosoma,  color = "2") )+
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+  	ylab("Population (Daphnia")+
+  	theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+p2 = ggplot() + geom_point(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=ai2, color="1" )) +
+	geom_point(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =ai3,  color = "2" ) ) +
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+  	ylab("Bits (AI) ")+
+  	theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+p3 = ggplot()+ geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=alg_per_N, group = mesocosm_id,,color="1" )) +
+	geom_line(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =(alg_perDaph), color="2") )+
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+	xlab("Day")+
+  	ylab("Algae consumed per N ")
+
+gp1 = ggplotGrob(p1)
+gp2 = ggplotGrob(p2)
+gp3 = ggplotGrob(p3)
+grid.draw(rbind(gp1, gp2,gp3))
+
+#To save as a PDF
+pdf("./Dia_exp_v_simv1_a1_all_long.pdf",width = 8, height = 10)
+grid.draw(rbind(gp1, gp2,gp3))
+dev.off()
+
 
 

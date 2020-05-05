@@ -372,9 +372,10 @@ m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
 #=============================================================================
 #Time series of Pop and aiE
 m1_DIT%>% ggplot()+ 
-  geom_point( aes(x = day_n, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
+  geom_point( aes(x = day_n, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
   geom_line( aes(x = day_n, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
   facet_grid(temperature~invade_monoculture)
+ggsave("./aiE_algalperN_all.pdf", width = 8, height = 10)
 
 #Pop and consumption
 m1_DIT%>% ggplot()+ 
@@ -393,6 +394,12 @@ m1_DIT%>% ggplot()+
   #geom_line( aes(x = N, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
   facet_grid(temperature~invade_monoculture)
 
+m1_DIT%>% ggplot()+ 
+      geom_point(aes(x = time, y =Daphnia,  color = "red") )+  
+      geom_line( aes(x = time, y =ai1,  color = "blue" ) )+ 
+      geom_point( aes(x = time, y =(alg_perDaph)/2E5, color="black") )+
+      scale_color_discrete(name ="", labels = c("Daphnia", "AI", "algal cost per Daph"))+
+facet_grid(mesocosm~nspp)
 
 #AIE and consumption
 m1_DIT%>% ggplot()+ 
