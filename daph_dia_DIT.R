@@ -297,15 +297,7 @@ for (i in 1:nmesos) {
   #Get the populations of both species
   f1=1 #scaling term
 
-  #Take the time series and interpolate missing days:
-  # pop_temp = floor(f1*out1[[i]][c("day_n","N_res","N_inv")])
-  # new_days = data.frame(day_n = seq(min(pop_temp$day_n),max(pop_temp$day_n,1) ) )
-  # pop_ts = new_days %>% left_join(pop_temp)
-  # pop_ts["N_res"] = na.approx(pop_ts["N_res"])
-  # pop_ts["N_inv"] = na.approx(pop_ts["N_inv"])
-  # pop_ts = pop_ts[c("N_res","N_inv")]
-
-  #This is the old way, without interpolating missing days: 
+  #Take the two-species time series
   pop_ts = floor(f1*out1[[i]][c("N_res","N_inv")])
 
   nt1 = 1
@@ -375,7 +367,7 @@ m1_DIT%>% ggplot()+
   geom_point( aes(x = day_n, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
   geom_line( aes(x = day_n, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
   facet_grid(temperature~invade_monoculture)
-ggsave("./aiE_algalperN_all.pdf", width = 8, height = 10)
+#ggsave("./aiE_algalperN_all.pdf", width = 8, height = 10)
 
 #Pop and consumption
 m1_DIT%>% ggplot()+ 
@@ -561,7 +553,7 @@ m1_DIT_plot = rbind(m1_daph_plot, m1_dia_plot)
 ggplot(m1_DIT_plot, aes(x = aiE, y =N_plot, color = species) ) + 
   geom_line( )+ facet_grid(temperature~species)+ 
   geom_point(data= m1_DIT, mapping= aes(x = aiE, y =alg_per_N, color = species) )+
-  facet_grid(temperature~species)+
+  facet_grid(temperature~species)+ylim(0,1E7)+
   xlab("Active information (bits) ")+
   ylab("Algal consumption per individual")+
   theme(strip.background = element_rect(colour=NA, fill=NA))

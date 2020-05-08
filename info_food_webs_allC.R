@@ -36,9 +36,11 @@ source("./functions/info_theory_functions.R")
 # Outer loop. Set the number of trials and determine how to generate 
 # combinations of species and parameters. 
 #=============================================================================
+#Assuming that the data set "m1_data_long" exists already: 
+temps = unique(m1_data_long$temperature)
 
 #Length and time steps of each model run
-tend = 20
+tend = 60
 delta1 = 0.01
 tl=tend/delta1
 
@@ -48,7 +50,7 @@ k= 2
 
 ###Build a series of scenarios going from simple to more complex dynamics
 #Number of food webs to generate
-nwebs = 1
+nwebs = length(temps)
 # scenarios = list(matrix(0,nwebs,1))
 
 ###
@@ -68,33 +70,6 @@ si_web =vector("list",nwebs)
 #The ensemble version of the AI
 aiE_web = vector("list",nwebs)
 
-#Random resources:
- c1 = 10E6
- amp1 = 00000 #1/exp(1)
-#Random consumers
- c2 = 1
- amp2 = 0.0 #1/exp(1)
- res_R = c(amp1,c1,amp2,c2)
-
- # c = 0
- # amp = 0 #1/exp(1)
- # res_R = c(amp,c)
-
-#or 
-# res_R = NULL
-
-# scenarios[[1]] = list(nRsp = 1, nCsp =0, nPsp = 0)
-# scenarios[[2]] = list(nRsp = 3, nCsp =0, nPsp = 0)
-# scenarios[[3]] = list(nRsp = 3, nCsp =0, nPsp = 0)
-# scenarios[[4]] = list(nRsp = 2, nCsp =1, nPsp = 0)
-# scenarios[[5]] = list(nRsp = 1, nCsp =1, nPsp = 1)
-
-#The structure of this code is based on taking an initial food web and 
-#going through a series of perturbations. The "w" index now corresponds
-#to each of the perturbations. 
-w = 1 
-#for (w in 1:nwebs){ 
-print(w)
 
 #Assume 2 trophic levels unless otherwise specified.
 nRsp = 1 #Algae
@@ -102,41 +77,83 @@ nCsp = 2 #Spp 1 is Daphnia, Spp 2 is Diaphanosoma
 nPsp = 1 #This is actually 0 --> Just a dummy predator
 nspp = nRsp+nCsp+nPsp
 
-#Randomly generate the species parameters for the model as well: 
-spp_prms = NULL
-#Resource: Nearly identical resource dynamics: 
-spp_prms$rR = matrix(10E6, nRsp, 1) #intrinsic growth -- Not used here
-spp_prms$Kr = matrix(10E6, nRsp, 1) #carrying capacity -- Constant algal addition
-
-############################
-#Consumers: 
-# In the single species exponential growth phase the growth rate of each consumer rC
-# is found by fitting an exponential model (e.g. cR_daph [[temp]] in resource_fits1.R).
-# However, this exponent must ultimately reflect the consumption rate of algae, which
-# means there is a conversion factor missing such that consumption_alga * X = exponent. 
-# Solving for X should give the intrinsic growth rate rC. From
-# resource_fits1.R, this means taking coef(cR_daph[[2]])[1]/coef(cl_daph[[2]])[1]. 
-#
-#spp_prms$rC = matrix( c(5,11) , nCsp, 1)  #intrisic growth - Solved fits in resource_fits1.R
-spp_prms$rC = matrix( c(6.86e-5, 2.46e-4) , nCsp, 1)  #intrisic growth -  Direct fits in resource_fits1.R
-#coef(cl_daph[[5]])[1]/(coef(cR_daph[[5]])[1]*10e6)
-spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
-spp_prms$muC = matrix(0.0, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
-#Consumption rates: 
-spp_prms$cC = matrix(c(0.035,0.015),nRsp,nCsp)
-spp_prms$Kc = matrix(c(45,350), nCsp, 1) #carrying capacities, approximately matching data
-
-# #Predators: These are just dummy variables for now
-spp_prms$rP =  matrix(0.0, 1, 1) #matrix(rnorm(nPsp,0.5,0), nPsp, 1) #intrisic growth
-spp_prms$eFp = matrix(1,1,nCsp) # just make the efficiency for everything 1 for now
-spp_prms$muP = matrix(0.0, 1, 1)#matrix(rnorm(nPsp,0.6,0), nPsp, 1)  #mortality rates
-#Consumption rates: 
-spp_prms$cP = matrix(c(0.0,0.0),nCsp,1)
+#=============================================================================
+# Outer loop. First run to equilibrate the population dynamics
+#=============================================================================
+par(mfrow=c(6,1),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
 
 for (w in 1:nwebs){ 
-	#=============================================================================
-	# Outer loop. First run to equilibrate the population dynamics
-	#=============================================================================
+	#Main list of species parameters for the model
+	spp_prms = NULL
+
+	#############################
+	#Resource: 
+	spp_prms$rR = matrix(10E6, nRsp, 1) #intrinsic growth -- Not used here
+	spp_prms$Kr = matrix(10E6, nRsp, 1) #carrying capacity -- Constant algal addition
+
+	############################
+	#Consumers: 
+	# In the single species exponential growth phase the growth rate of each consumer rC
+	# is found by fitting an exponential model (e.g. cR_daph [[temp]] in resource_fits1.R).
+	# However, this exponent must ultimately reflect the consumption rate of algae, which
+	# means there is a conversion factor missing such that consumption_alga * X = exponent. 
+	# Solving for X should give the intrinsic growth rate rC. From
+	# resource_fits1.R, this means taking coef(cR_daph[[2]])[1]/coef(cl_daph[[2]])[1]. 
+	#
+
+	###Random fluctuations and Kc
+	daph_tmp = subset(m1_data_long, species == "daphnia" & temperature == temps[[w]]) #Daphnia at temp
+	dia_tmp = subset(m1_data_long, species == "diaphanosoma" & temperature == temps[[w]] ) #Daphnia at temp
+
+	#Approximate a carrying capacity
+	daph_tmp_a=daph_tmp[daph_tmp$day_n<50, ]
+	dia_tmp_a=dia_tmp[dia_tmp$day_n<50, ]
+	spp_prms$Kc = matrix(c(mean(daph_tmp_a$N,na.rm=T),2*mean(dia_tmp_a$N,na.rm=T)), nCsp, 1) #carrying capacities, approximately matching data
+	Kc_sd = matrix(c(sqrt(var(daph_tmp_a$N,na.rm=T)),sqrt(var(dia_tmp_a$N,na.rm=T))), nCsp, 1)
+	
+	#Choose the max from the monoculture as a K
+
+
+	#Random algal/consumer fluctuations. 
+	#Algae
+	c1 = 10E6
+	amp1 = 100000 #1/exp(1)
+
+	#Consumers
+	c2 = 1
+	amp2 = mean(spp_prms$Kc/Kc_sd) #Take an average coefficient of variation. 
+	res_R = c(amp1,c1,amp2,c2)
+
+	#Consumption rates: 
+	#spp_prms$cC = matrix(c(0.035,0.015),nRsp,nCsp)
+	#The coefficient that we want could be in one of two places, depending on whether the 
+	#growth curve (in resource_fits1.R) was fit by an LM or NLS. 
+	if(class(cl_daph[[w]]) == "nls" ){ daph_C = coef(cl_daph[[w]])[1]} else {daph_C = coef(cl_daph[[w]])[2] }
+	if(class(cl_dia[[w]]) == "nls" ){ dia_C = coef(cl_dia[[w]])[1]} else {dia_C = coef(cl_dia[[w]])[2] }
+	spp_prms$cC = matrix(abs(c(daph_C,dia_C)),nRsp,nCsp )
+
+	#Intrinsic growth rates: 
+	#spp_prms$rC = matrix( c(5,11) , nCsp, 1)  #intrisic growth - Solved fits in resource_fits1.R
+	#spp_prms$rC = matrix( c(6.86e-5, 2.46e-4) , nCsp, 1)  #intrisic growth -  Direct fits in resource_fits1.R
+	#The coefficient that we want could be in one of two places, depending on whether the 
+	#growth curve (in resource_fits1.R) was fit by an LM or NLS. 
+	if(class(cR_daph[[w]]) == "nls" ){ daph_C = coef(cR_daph[[w]])[1]} else {daph_C = coef(cR_daph[[w]])[2] }
+	if(class(cR_dia[[w]]) == "nls" ){ dia_C = coef(cR_dia[[w]])[1]} else {dia_C = coef(cR_dia[[w]])[2] }
+	spp_prms$rC = matrix(abs(c(daph_C,dia_C)),nRsp,nCsp )#/spp_prms$cC 
+
+	#coef(cl_daph[[5]])[1]/(coef(cR_daph[[5]])[1]*10e6)
+	spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
+	spp_prms$muC = matrix(0.0, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
+	
+
+	########Predators: These are just dummy variables for now
+	spp_prms$rP =  matrix(0.0, 1, 1) #matrix(rnorm(nPsp,0.5,0), nPsp, 1) #intrisic growth
+	spp_prms$eFp = matrix(1,1,nCsp) # just make the efficiency for everything 1 for now
+	spp_prms$muP = matrix(0.0, 1, 1)#matrix(rnorm(nPsp,0.6,0), nPsp, 1)  #mortality rates
+	#Consumption rates: 
+	spp_prms$cP = matrix(c(0.0,0.0),nCsp,1)
+
+
 	#=============================================================================
 	# This function gives: 
 	# out 		The time series for of population growth for each species in the web
@@ -145,11 +162,25 @@ for (w in 1:nwebs){
 	# spp_prms	The parameters of all species in the food web
 	#=============================================================================
 	#
-	winit = matrix(c(10E6,1,1,0))
+	winit = matrix(c(10E6,4,4,0))
 	tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
 		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 
-	out1[[w]]$out[tl,]
+	print(out1[[w]]$out[tl,])
+
+	#Look at basic plots on the fly: 
+	plot(out1[[w]]$out[,1],out1[[w]]$out[,4],t="l",ylim=c(0,max(out1[[w]]$out[tl,3:4])))
+	points(dia_tmp$day_n, dia_tmp$N)
+	lines(out1[[w]]$out[,1], out1[[w]]$out[,3],col="red")
+	points(daph_tmp$day_n,daph_tmp$N, col="red")
+
+	# daph_tmp = subset(mesos_daph, temperature == temps[[w]]) #Daphnia at temp
+	# dia_tmp = subset(mesos_dia, temperature == temps[[w]] ) #Daphnia at temp
+	# plot(dia_tmp$day_n-27, dia_tmp$N)
+	# lines( out1[[w]]$out[,4])
+	
+	# plot(daph_tmp$day_n-27, daph_tmp$N)
+	# lines( out1[[w]]$out[,3])
 
 	#=============================================================================
 	# Inner loop: Mutual invasion:remove each species and track the dynamics
@@ -192,6 +223,11 @@ for (w in 1:nwebs){
 	}
 
 	out_inv1 [[w]] = a_temp
+	#Look at basic plots on the fly: 
+	plot(out_inv1 [[w]][,4],t="l",ylim=c(0,max(out_inv1 [[w]][tl,3:4])))
+	points(dia_tmp$day_n, dia_tmp$N)
+	lines( out_inv1 [[w]][,3],col="red")
+	points(daph_tmp$day_n,daph_tmp$N, col="red")
 	  #=============================================================================
 	  # Information processing networks
 	  #=============================================================================

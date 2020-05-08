@@ -124,7 +124,8 @@ ggplot(aes(y =N, x =mean(algae_cells_mL,na.rm=T)- algae_abundance, color = speci
   geom_point()+
   facet_grid(temperature~species)
 
-#Use both the monoculture data and the data for the resident pre-invasion
+#Use both the monoculture data and the data for the resident pre-invasion for 
+#resource consumption fits, intraspecific competition, intrinsic growth
 # inv_day = 1000
 mesos1 = subset(m1_data_long,species == "daphnia" & invade_monoculture == "monoculture" )
 mesos2 = subset(m1_data_long,species == "daphnia" & invade_monoculture == "dia invade" )
@@ -255,8 +256,9 @@ for(t in 1:6) {
   #   cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
   # }, error = function(e) {} ) 
 
+  ######Note: Approaches 2 and 3 give essentially the same fit of consumption rates c1
  # #2. Use NLS to fit the decaying logistic/exponential response
- #  alg2 = formula (algae_abundance ~  algae_start/(1+a1*exp(c1*N) ) )
+ # alg2 = formula (algae_abundance/algae_start ~  1/(1+a1*exp(c1*N) ) )
 
  #  m1 = lm(I(log(algae_start/algae_abundance))~I(N), data = daph_tmp ) 
  #  tryCatch({ 
@@ -287,10 +289,10 @@ for(t in 1:6) {
  #  }, error = function(e) {} ) 
 
 
-#3. Use NLS to fit a decaying exponential response
-  alg2 = formula (algae_abundance/algae_start ~  exp(c1*N+a1) )
+# #3. Use NLS to fit a decaying exponential response
+  alg2 = formula (algae_abundance/algae_start~  exp(c1*N+a1) )
 
-  m1 = lm(I(log(algae_abundance/algae_start))~I(N), data = daph_tmp ) 
+  m1 = lm(I(log(algae_abundance/algae_start ))~I(N), data = daph_tmp ) 
   tryCatch({ 
     cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
     start=list(c1=(as.numeric(coef(m1)[2])),a1=(as.numeric(coef(m1)[1] ) )   ),
@@ -317,6 +319,37 @@ for(t in 1:6) {
     dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
     cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
   }, error = function(e) {} ) 
+
+#3b. Use NLS to fit a decaying exponential response
+  # alg2 = formula (Adiff ~  exp(c1*N+a1) )
+
+  # m1 = lm(I(log(Adiff ))~I(N), data = daph_tmp ) 
+  # tryCatch({ 
+  #   cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
+  #   start=list(c1=(as.numeric(coef(m1)[2])),a1=(as.numeric(coef(m1)[1] ) )   ),
+  #   control=nls.control(maxiter = 1000), trace=F ) 
+
+  #   #Predicted values: 
+  #   #s=seq(min(daph_tmp$N),max(daph_tmp$N),1 )
+  #   s=seq(0,maxN,1 )
+  #   d_tmp = predict(cl_daph[[t]], list( N = s ) )
+  #   daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+  #   cl_daph_pred = rbind(cl_daph_pred, daph_pred_tmp)
+  # }, error = function(e) {} ) 
+
+  # m1 = lm(I(log(Adiff ))~I(N), data = dia_tmp ) 
+  # tryCatch( {
+  #   cl_dia[[t]] = nls( formula= alg2, data = dia_tmp, 
+  #   start=list(c1=(as.numeric(coef(m1)[2])),a1=(as.numeric(coef(m1)[1] ) )   ),
+  #   control=nls.control(maxiter = 1000), trace=F ) 
+
+  #   #Predicted values: 
+  #   #s=seq(min(dia_tmp$N),max(dia_tmp$N),1 )
+  #   s=seq(0,maxN,1 )
+  #   d_tmp = predict(cl_dia[[t]], list( N = s ) )
+  #   dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
+  #   cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
+  # }, error = function(e) {} ) 
 
   ############################  
   #The inverse relationship between N and Adiff, related to approach 1: 
@@ -372,48 +405,137 @@ for(t in 1:6) {
   #   cR_dia_pred = rbind(cR_dia_pred, dia_pred_tmp)
   # }, error = function(e) {} ) 
 
-#Get the intrinsic growth rate of each species as a function of algal density
-  cR = formula (N~  I(exp(c1*Adiff+a1) ) )
+#1. Get the intrinsic growth rate of each species as a function of algal density
+  # cR = formula (N~  I(exp(c1*Adiff+a1) ) )
 
-  c1 = lm(I(log(N+1))~I(Adiff), data = daph_tmp ) 
+  # c1 = lm(I(log(N+1))~I(Adiff), data = daph_tmp ) 
+  # tryCatch({ 
+  #   cR_daph[[t]] = nls( formula= cR, data = daph_tmp, 
+  #   start=list(c1=(as.numeric(coef(c1)[2])), a1=(as.numeric(coef(c1)[1] ) ) ),
+  #   control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+  # }, error = function(e) {} ) 
+  #   #Predicted values: 
+  #   s=seq(min(daph_tmp$Adiff),max(daph_tmp$Adiff),1 )
+  #   #s=seq(0,maxT,1 )
+
+  #   if( is.null(cR_daph[[t]]) ) {
+  #       cR_daph[[t]] = c1
+  #       d_tmp = exp(predict(cR_daph[[t]], list( Adiff= s ) ) )
+  #   }else {
+  #       d_tmp = predict(cR_daph[[t]], list( Adiff= s ) )
+  #   }
+
+  #   daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+  #   cR_daph_pred = rbind(cR_daph_pred, daph_pred_tmp)
+ 
+
+  # c1 = lm(I(log(N+1))~I(Adiff), data = dia_tmp ) 
+  # tryCatch({ 
+  #   cR_dia[[t]] = nls( formula= cR, data = dia_tmp, 
+  #   start=list(c1=(as.numeric(coef(c1)[2])), a1=(as.numeric(coef(c1)[1] ) ) ),
+  #   control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+  # }, error = function(e) {} ) 
+  #   #Predicted values: 
+  #   s=seq(min(dia_tmp$Adiff),max(dia_tmp$Adiff),1 )
+  #   #s=seq(0,maxT,1 )
+  #   if( is.null(cR_dia[[t]]) ) {
+  #       cR_dia[[t]] = c1
+  #       d_tmp = exp(predict(cR_dia[[t]], list( Adiff= s ) ) )
+  #   }else {
+  #       d_tmp = predict(cR_dia[[t]], list( Adiff= s ) )
+  #   }
+  #   dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
+  #   cR_dia_pred = rbind(cR_dia_pred, dia_pred_tmp)
+
+
+# #2. Get the intrinsic growth rate of each species as a function of algal density
+#   cR = formula (N~  I(exp(c1*p1*Adiff+a1) ) )
+
+#   p1 = abs(coef(cl_daph[[w]])[1])
+#   c1 = lm(I(log(N+1))~I(p1*Adiff), data = daph_tmp ) 
+#   tryCatch({ 
+#     cR_daph[[t]] = nls( formula= cR, data = daph_tmp, 
+#     start=list(c1=(as.numeric(coef(c1)[2])), a1=(as.numeric(coef(c1)[1] ) ) ),
+#     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+#   }, error = function(e) {} ) 
+#     #Predicted values: 
+#     s=seq(min(daph_tmp$Adiff),max(daph_tmp$Adiff),1 )
+#     #s=seq(0,maxT,1 )
+
+#     if( is.null(cR_daph[[t]]) ) {
+#         cR_daph[[t]] = c1
+#         d_tmp = exp(predict(cR_daph[[t]], list( Adiff= s ) ) )
+#     }else {
+#         d_tmp = predict(cR_daph[[t]], list( Adiff= s ) )
+#     }
+
+#     daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+#     cR_daph_pred = rbind(cR_daph_pred, daph_pred_tmp)
+ 
+
+
+#   p1 = abs(coef(cl_dia[[w]])[1])
+#   c1 = lm(I(log(N+1))~I(p1*Adiff), data = dia_tmp ) 
+#   tryCatch({ 
+#     cR_dia[[t]] = nls( formula= cR, data = dia_tmp, 
+#     start=list(c1=(as.numeric(coef(c1)[2])), a1=(as.numeric(coef(c1)[1] ) ) ),
+#     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+#   }, error = function(e) {} ) 
+#     #Predicted values: 
+#     s=seq(min(dia_tmp$Adiff),max(dia_tmp$Adiff),1 )
+#     #s=seq(0,maxT,1 )
+#     if( is.null(cR_dia[[t]]) ) {
+#         cR_dia[[t]] = c1
+#         d_tmp = exp(predict(cR_dia[[t]], list( Adiff= s ) ) )
+#     }else {
+#         d_tmp = predict(cR_dia[[t]], list( Adiff= s ) )
+#     }
+#     dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
+#     cR_dia_pred = rbind(cR_dia_pred, dia_pred_tmp)
+
+#3. Get the intrinsic growth rate of each species as a function of algal density
+  cR = formula ( N ~  exp(c1*algae_abundance+a1)  )
+
+  c1 = lm(I(log(N+1))~I(algae_abundance), data = daph_tmp ) 
   tryCatch({ 
     cR_daph[[t]] = nls( formula= cR, data = daph_tmp, 
     start=list(c1=(as.numeric(coef(c1)[2])), a1=(as.numeric(coef(c1)[1] ) ) ),
     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
-
+  }, error = function(e) {} ) 
     #Predicted values: 
-    s=seq(min(daph_tmp$Adiff),max(daph_tmp$Adiff),1 )
+    s=seq(min(daph_tmp$algae_abundance),max(daph_tmp$algae_abundance),1 )
     #s=seq(0,maxT,1 )
 
     if( is.null(cR_daph[[t]]) ) {
         cR_daph[[t]] = c1
-        d_tmp = exp(predict(cR_daph[[t]], list( Adiff= s ) ) )
+        d_tmp = exp(predict(cR_daph[[t]], list( algae_abundance= s ) ) )
     }else {
-        d_tmp = predict(cR_daph[[t]], list( Adiff= s ) )
+        d_tmp = predict(cR_daph[[t]], list( algae_abundance= s ) )
     }
 
     daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
     cR_daph_pred = rbind(cR_daph_pred, daph_pred_tmp)
-  }, error = function(e) {} ) 
+ 
 
-  c1 = lm(I(log(N+1))~I(Adiff), data = dia_tmp ) 
+  c1 = lm(I(log(N+1))~I(algae_abundance), data = dia_tmp ) 
   tryCatch({ 
     cR_dia[[t]] = nls( formula= cR, data = dia_tmp, 
     start=list(c1=(as.numeric(coef(c1)[2])), a1=(as.numeric(coef(c1)[1] ) ) ),
     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
-
+  }, error = function(e) {} ) 
     #Predicted values: 
-    s=seq(min(dia_tmp$Adiff),max(dia_tmp$Adiff),1 )
+    s=seq(min(dia_tmp$algae_abundance),max(dia_tmp$algae_abundance),1 )
     #s=seq(0,maxT,1 )
     if( is.null(cR_dia[[t]]) ) {
         cR_dia[[t]] = c1
-        d_tmp = exp(predict(cR_dia[[t]], list( Adiff= s ) ) )
+        d_tmp = exp(predict(cR_dia[[t]], list( algae_abundance= s ) ) )
     }else {
-        d_tmp = predict(cR_dia[[t]], list( Adiff= s ) )
+        d_tmp = predict(cR_dia[[t]], list( algae_abundance= s ) )
     }
     dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
     cR_dia_pred = rbind(cR_dia_pred, dia_pred_tmp)
-  }, error = function(e) {} ) 
+
+
 
 
 }
@@ -431,6 +553,7 @@ cR_pred = rbind(cR_daph_pred,cR_dia_pred)
 #Pick the appropriate first line: 
 #ggplot(cl_plot, aes(x = N, y =algae_abundance, color = species) )+  #2
 ggplot(cl_plot, aes(x = N, y =algae_abundance/algae_start, color = species) )+ #3
+#ggplot(cl_plot, aes(x = N, y =Adiff, color = species) )+ #3
   geom_point( )+ facet_grid(temperature~species)+ 
   geom_line(data= cl_pred, mapping= aes(x = s, y =N_pred, color=species) ) + 
   facet_grid(temperature~species)+
@@ -464,10 +587,11 @@ ggsave("./algal_consump2_tempdiaDaph.pdf", width = 8, height = 10)
 #Separate panels
 #Pick the appropriate first line: 
 #ggplot(cl_plot, aes(x = day_n, y =N, color = species) ) + #1. 
-ggplot(cl_plot, aes(x = Adiff, y =N, color = species) ) + #2. 
+#ggplot(cl_plot, aes(x = Adiff, y =N, color = species) ) + #2. 
+ggplot(cl_plot, aes(x = algae_abundance, y =N, color = species) ) + #2. 
   geom_point( )+ facet_grid(temperature~species)+ 
   geom_line(data= cR_pred, mapping= aes(x = s, y =N_pred, color=species) )+
-  facet_grid(temperature~species)+ xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
+  facet_grid(temperature~species)+ #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
   xlab("Zooplankton abundance ")+
   ylab("Time")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
