@@ -40,7 +40,7 @@ source("./functions/info_theory_functions.R")
 temps = unique(m1_data_long$temperature)
 
 #Length and time steps of each model run
-tend = 60
+tend = 50
 delta1 = 0.01
 tl=tend/delta1
 
@@ -116,8 +116,8 @@ for (w in 1:nwebs){
 
 	#Random algal/consumer fluctuations. 
 	#Algae
-	c1 = 10E6
-	amp1 = 100000 #1/exp(1)
+	c1 = 1 #10E6
+	amp1 = 0.25 #100000 #1/exp(1)
 
 	#Consumers
 	c2 = 1
@@ -162,16 +162,16 @@ for (w in 1:nwebs){
 	# spp_prms	The parameters of all species in the food web
 	#=============================================================================
 	#
-	winit = matrix(c(10E6,4,4,0))
+	winit = matrix(c(10E6,0,0,0))
 	tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
 		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 
 	print(out1[[w]]$out[tl,])
 
 	#Look at basic plots on the fly: 
-	plot(out1[[w]]$out[,1],out1[[w]]$out[,4],t="l",ylim=c(0,max(out1[[w]]$out[tl,3:4])))
+	plot(out1[[w]]$out[,4],t="l",ylim=c(0,max(out1[[w]]$out[tl,3:4])))
 	points(dia_tmp$day_n, dia_tmp$N)
-	lines(out1[[w]]$out[,1], out1[[w]]$out[,3],col="red")
+	lines( out1[[w]]$out[,3],col="red",t="l")
 	points(daph_tmp$day_n,daph_tmp$N, col="red")
 
 	# daph_tmp = subset(mesos_daph, temperature == temps[[w]]) #Daphnia at temp
