@@ -162,7 +162,7 @@ for (w in 1:nwebs){
 	# spp_prms	The parameters of all species in the food web
 	#=============================================================================
 	#
-	winit = matrix(c(10E6,0,0,0))
+	winit = matrix(c(10E6,4,4,0))
 	tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
 		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 
@@ -299,35 +299,81 @@ for (w in 1:nwebs){
 #Post-loop processing to create a single data frame for plotting and stats
 #=============================================================================
 ##Recursively flatten this into a data frame. 
-mDIT_tmp = data.frame(matrix( nrow=0, ncol =( (nRsp+nCsp)*5+4) )) 
+mDIT_tmp = data.frame(matrix( nrow=0, ncol =30 ) ) 
 ncnames = c("Algae", "Daphnia","Diaphanosoma","aiE","te1","te2", "te3","ee1","ee2",
-	"ee3","ai1","ai2","ai3","si1","si2","si3","run","mesocosm","nspp")
+	"ee3","ai1","ai2","ai3","si1","si2","si3","run","mesocosm","nspp","alg_perDaph",
+	"alg_perDia","zoo","alg_perzoo","alg_per_DDaph","alg_per_DDia","alg_per_Dzoo",
+	"m_alg_perDaph", "m_alg_perzoo", "m_Daph", "m_zoo" )
 colnames(mDIT_tmp) = ncnames
 mesocosms = factor(c("A","B")) #A is Daphnia invader, B is Daphnia resident
 nspp = factor(c(1,2)) #1 is the pre-invasion phase, 2 is post-invasion phase
 for (f in 1:nwebs){
-	 DIT_tmp = data.frame(matrix(0,nt2,( (nRsp+nCsp)*5+4) ))
-     DIT_tmp[,1:3] = as.matrix(out_inv1[[f]][,2:4])
-     DIT_tmp[(k+1):nt2,4] = aiE_web[[f]]$local
-     DIT_tmp[(k+1):nt2,5:7] = di_web[[f]]$te_local[,2:4]
-     DIT_tmp[(k*2):nt2,8:10] = di_web[[f]]$ee_local[,2:4]
-     DIT_tmp[(k+1):nt2,11:13] = di_web[[f]]$ai_local[,2:4]
-     DIT_tmp[(k+1):nt2,14:16] = di_web[[f]]$si_local[,2:4]
-     DIT_tmp[,17] = f
+	spp_prms = out1[[f]]$spp_prms
+	DIT_tmp = data.frame(matrix(0,nt2,30 ))
+	colnames(DIT_tmp) = ncnames
 
-     DIT_tmp[,18] = factor(levels = levels(mesocosms))
-     DIT_tmp[1:nt2/2,18] = mesocosms[1]
-     DIT_tmp[(nt2/2+1):nt2,18] = mesocosms[2]
+    DIT_tmp[,1:3] = as.matrix(out_inv1[[f]][,2:4])
+    DIT_tmp[(k+1):nt2,4] = aiE_web[[f]]$local
+    DIT_tmp[(k+1):nt2,5:7] = di_web[[f]]$te_local[,2:4]
+    DIT_tmp[(k*2):nt2,8:10] = di_web[[f]]$ee_local[,2:4]
+    DIT_tmp[(k+1):nt2,11:13] = di_web[[f]]$ai_local[,2:4]
+    DIT_tmp[(k+1):nt2,14:16] = di_web[[f]]$si_local[,2:4]
+    DIT_tmp[,17] = f
 
-     spp1 = c(1:(nt2/4),(nt2/2+1):(nt2/2+nt2/4))
-     spp2 = c((nt2/4+1):(nt2/2),(nt2/2+nt2/4+1):nt2)
-     DIT_tmp[,19] = factor(levels = levels(nspp))
-     DIT_tmp[spp1,19] = nspp[1]
-     DIT_tmp[spp2,19] = nspp[2]
+    DIT_tmp[,18] = factor(levels = levels(mesocosms))
+    DIT_tmp[1:nt2/2,18] = mesocosms[1]
+    DIT_tmp[(nt2/2+1):nt2,18] = mesocosms[2]
 
-     colnames(DIT_tmp) = ncnames
-     DIT_tmp = as.data.frame(DIT_tmp) 
-     mDIT_tmp = rbind(mDIT_tmp,DIT_tmp)
+    spp1 = c(1:(nt2/4),(nt2/2+1):(nt2/2+nt2/4))
+    spp2 = c((nt2/4+1):(nt2/2),(nt2/2+nt2/4+1):nt2)
+    DIT_tmp[,19] = factor(levels = levels(nspp))
+    DIT_tmp[spp1,19] = nspp[1]
+    DIT_tmp[spp2,19] = nspp[2]
+
+ 	#DIT_tmp[,20] = (c(spp_prms$Kr)-DIT_tmp$Algae)/DIT_tmp$Daphnia
+	# DIT_tmp[,20][is.infinite(DIT_tmp$alg_perDaph)] = 0
+
+	# DIT_tmp[,21] = (c(spp_prms$Kr)-DIT_tmp$Algae)/DIT_tmp$Diaphanosoma
+	# DIT_tmp[,21] [is.infinite(DIT_tmp$alg_perDia)] = 0
+
+
+    DIT_tmp[,20] = (spp_prms$cC[1]*DIT_tmp$Algae)/DIT_tmp$Daphnia
+	DIT_tmp[,20][is.infinite(DIT_tmp$alg_perDaph)] = 0
+
+	DIT_tmp[,21] = (spp_prms$cC[2]*DIT_tmp$Algae)/DIT_tmp$Diaphanosoma
+	DIT_tmp[,21] [is.infinite(DIT_tmp$alg_perDia)] = 0
+
+	DIT_tmp[,22] = DIT_tmp$Daphnia+DIT_tmp$Diaphanosoma
+
+	DIT_tmp[,23] = ((spp_prms$cC[1]+spp_prms$cC[2])*DIT_tmp$Algae)/DIT_tmp$zoo
+	DIT_tmp[,23] [is.infinite(DIT_tmp$alg_perzoo)] = 0
+
+	#Delta columns: 
+	# DIT_tmp[,24] = (c(spp_prms$Kr)-DIT_tmp$Algae)/c(NA,diff(DIT_tmp$Daphnia))
+	# DIT_tmp[,24][is.infinite(DIT_tmp$alg_per_DDaph)] = 0
+
+	# DIT_tmp[,25] = (c(spp_prms$Kr)-DIT_tmp$Algae)/c(NA,diff(DIT_tmp$Diaphanosoma))
+	# DIT_tmp[,25][is.infinite(DIT_tmp$alg_per_DDia)] = 0
+
+	# DIT_tmp[,26] = (c(spp_prms$Kr)-DIT_tmp$Algae)/c(NA,diff(DIT_tmp$zoo))
+	# DIT_tmp[,26][is.infinite(DIT_tmp$alg_per_Dzoo)] = 0
+
+	DIT_tmp[,24] = (spp_prms$cC[1]*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$Daphnia))
+	DIT_tmp[,24][is.infinite(DIT_tmp$alg_per_DDaph)] = 0
+
+	DIT_tmp[,25] = (spp_prms$cC[2]*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$Diaphanosoma))
+	DIT_tmp[,25][is.infinite(DIT_tmp$alg_per_DDia)] = 0
+
+	DIT_tmp[,26] = ((spp_prms$cC[1]+spp_prms$cC[2])*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$zoo))
+	DIT_tmp[,26][is.infinite(DIT_tmp$alg_per_Dzoo)] = 0
+
+	DIT_tmp[,27] = mean(DIT_tmp$alg_perDaph )
+	DIT_tmp[,28] = mean(DIT_tmp$alg_perzoo )
+	DIT_tmp[,29] = mean(DIT_tmp$Daphnia )
+	DIT_tmp[,30] = mean(DIT_tmp$zoo )
+
+    DIT_tmp = as.data.frame(DIT_tmp) 
+    mDIT_tmp = rbind(mDIT_tmp,DIT_tmp)
 }
 
 #Add the time column
@@ -347,6 +393,8 @@ a1[is.infinite(a1)] = 0
 # 	"te_web","si_web", "aiE_web")
 #save(file="daphDia_DIT_20_v00.var", "mDIT", "out1","out_inv1","di_web",
 #	"te_web","si_web", "aiE_web")
+save(file="daphDia_DIT_50_vNat.var", "mDIT", "out1","out_inv1","di_web",
+	"te_web","si_web", "aiE_web")
 #=============================================================================
 #Loading
 #=============================================================================
@@ -356,34 +404,35 @@ a1[is.infinite(a1)] = 0
 #load("daphDia_DIT_20_v01.var")
 #=============================================================================
 #Add some new columns to the data: 
+#Only do this for the older files where this wasn't done in the loop above
 #=============================================================================
-mDIT$alg_perDaph = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$Daphnia
-mDIT$alg_perDaph[is.infinite(mDIT$alg_perDaph)] = 0
+# mDIT$alg_perDaph = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$Daphnia
+# mDIT$alg_perDaph[is.infinite(mDIT$alg_perDaph)] = 0
 
-mDIT$alg_perDia = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$Diaphanosoma
-mDIT$alg_perDia[is.infinite(mDIT$alg_perDia)] = 0
+# mDIT$alg_perDia = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$Diaphanosoma
+# mDIT$alg_perDia[is.infinite(mDIT$alg_perDia)] = 0
 
-mDIT$zoo = mDIT$Daphnia+mDIT$Diaphanosoma
+# mDIT$zoo = mDIT$Daphnia+mDIT$Diaphanosoma
 
-mDIT$alg_perzoo = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$zoo
-mDIT$alg_perzoo[is.infinite(mDIT$alg_perzoo)] = 0
+# mDIT$alg_perzoo = (c(spp_prms$Kr)-mDIT$Algae)/mDIT$zoo
+# mDIT$alg_perzoo[is.infinite(mDIT$alg_perzoo)] = 0
 
-#Delta columns: 
-mDIT$alg_per_DDaph = (c(spp_prms$Kr)-mDIT$Algae)/c(NA,diff(mDIT$Daphnia))
-	#(mDIT$Daphnia *spp_prms$cC[1,1]*spp_prms$rC[1]*mDIT$Algae)
-mDIT$alg_per_DDaph[is.infinite(mDIT$alg_per_DDaph)] = 0
+# #Delta columns: 
+# mDIT$alg_per_DDaph = (c(spp_prms$Kr)-mDIT$Algae)/c(NA,diff(mDIT$Daphnia))
+# 	#(mDIT$Daphnia *spp_prms$cC[1,1]*spp_prms$rC[1]*mDIT$Algae)
+# mDIT$alg_per_DDaph[is.infinite(mDIT$alg_per_DDaph)] = 0
 
-mDIT$alg_per_DDia = (c(spp_prms$Kr)-mDIT$Algae)/c(NA,diff(mDIT$Diaphanosoma))
-	#(mDIT$Dia *spp_prms$cC[1,2]*spp_prms$rC[2]*mDIT$Algae)
-mDIT$alg_per_DDia[is.infinite(mDIT$alg_per_DDia)] = 0
+# mDIT$alg_per_DDia = (c(spp_prms$Kr)-mDIT$Algae)/c(NA,diff(mDIT$Diaphanosoma))
+# 	#(mDIT$Dia *spp_prms$cC[1,2]*spp_prms$rC[2]*mDIT$Algae)
+# mDIT$alg_per_DDia[is.infinite(mDIT$alg_per_DDia)] = 0
 
-mDIT$alg_per_Dzoo = (c(spp_prms$Kr)-mDIT$Algae)/c(NA,diff(mDIT$zoo))
-mDIT$alg_per_Dzoo[is.infinite(mDIT$alg_per_Dzoo)] = 0
+# mDIT$alg_per_Dzoo = (c(spp_prms$Kr)-mDIT$Algae)/c(NA,diff(mDIT$zoo))
+# mDIT$alg_per_Dzoo[is.infinite(mDIT$alg_per_Dzoo)] = 0
 
 
-mDIT=ddply(mDIT, mesocosm~nspp, transform,
- m_alg_perDaph  = mean(alg_perDaph ), m_alg_perzoo  = mean(alg_perzoo ),
- m_Daph  = mean(Daphnia ), m_zoo  = mean(zoo )) 
+# mDIT2=ddply(mDIT, mesocosm~nspp, transform,
+#  m_alg_perDaph  = mean(alg_perDaph ), m_alg_perzoo  = mean(alg_perzoo ),
+#  m_Daph  = mean(Daphnia ), m_zoo  = mean(zoo )) 
 
 # mDIT1 = mDIT
 # mDIT2 = mDIT
@@ -392,6 +441,68 @@ mDIT=ddply(mDIT, mesocosm~nspp, transform,
 #=============================================================================
 #Plots
 #=============================================================================
+#=============================================================================
+#Some basic plots to start thinking: 
+#=============================================================================
+
+#Time series of Pop and aiE
+mDIT[mDIT$time<20,]%>% ggplot()+ 
+  geom_line( aes(x = time, y =Daphnia, color="1"  ) )+ geom_line(aes(x = time, y =Diaphanosoma, color="2") )+ 
+  facet_grid(run~mesocosm+nspp) +ylim(0,2E2)
+#ggsave("./aiE_algalperN_all.pdf", width = 8, height = 10)
+
+mDIT[mDIT$time<20,]%>% ggplot()+ 
+  geom_line( aes(x = time, y =Algae, color="1"  ) )+ geom_line(aes(x = time, y =Diaphanosoma, color="2") )+ 
+  facet_grid(run~mesocosm+nspp) +ylim(0,2E7)
+
+mDIT%>% ggplot()+ 
+  geom_line( aes(x = time, y =Daphnia, color="1"  ) )+ geom_line(aes(x = time, y =Diaphanosoma, color="2") )+
+  geom_point( aes(x = time, y =ai1,   ) )+  
+  facet_grid(temperature~nspp)
+
+#Pop and consumption
+mDIT[mDIT$time<10,]%>% ggplot()+ 
+  geom_point( aes(x =Daphnia, y =(alg_perDaph), color="1" ) )+ geom_point( aes(x =Diaphanosoma,y =(alg_perDia), color="2") )+  
+  facet_grid(run~mesocosm+nspp) +ylim(0,1E6) +xlim(0,2E2)
+
+mDIT[mDIT$time<10,]%>% ggplot()+ 
+  geom_point( aes(x =Daphnia, y =(alg_per_DDaph), color="1" ) )+ geom_point( aes(x =Diaphanosoma,y =(alg_per_DDia), color="2") )+  
+  facet_grid(run~mesocosm+nspp) +ylim(0,1E6) +xlim(0,2E2)
+
+#Pop and aiE
+mDIT[mDIT$time<10,] %>% ggplot()+ 
+  geom_point( aes(x =Daphnia, y =ai2,  color="1" ) ) +geom_point( aes(x =Diaphanosoma, y =ai3,  color="2" ) )+  
+  #geom_line( aes(x = N, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
+  facet_grid(run~mesocosm+nspp)+xlim(0,2E2)
+
+mDIT[mDIT$time<10,] %>% ggplot()+ 
+  geom_point( aes(x =Daphnia, y =aiE,  color="1" ) ) +geom_point( aes(x =Diaphanosoma, y =aiE,  color="2" ) )+  
+  #geom_line( aes(x = N, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
+  facet_grid(run~mesocosm+nspp)+xlim(0,2E2)
+
+
+m1_DIT%>% ggplot()+ 
+      geom_point(aes(x = time, y =Daphnia,  color = "red") )+  
+      geom_line( aes(x = time, y =ai1,  color = "blue" ) )+ 
+      geom_point( aes(x = time, y =(alg_perDaph)/2E5, color="black") )+
+      scale_color_discrete(name ="", labels = c("Daphnia", "AI", "algal cost per Daph"))+
+facet_grid(mesocosm~nspp)
+
+#AIE and consumption
+mDIT[mDIT$time<20,] %>% ggplot()+ 
+ geom_point( aes(x =alg_perDaph, y =ai2,  color="1" ) ) +geom_point( aes(x =alg_perDia, y =ai3,  color="2" ) )+  
+ facet_grid(run~mesocosm+nspp) +xlim(0,1E5)
+
+mDIT[mDIT$time<20,] %>% ggplot()+ 
+ geom_point( aes(y =alg_perDaph, x =ai2,  color=time ) ) + geom_point( aes(y =alg_perDia, x =ai3,  color="2" ) )+  
+ facet_grid(run~mesocosm+nspp) +ylim(0,1E5)
+
+#AIE and consumption
+mDIT[mDIT$time<20,] %>% ggplot()+ 
+ geom_point( aes(x =alg_per_DDaph, y =ai2,  color="1" ) ) +geom_point( aes(x =alg_per_DDia, y =ai3,  color="2" ) )+  
+ facet_grid(run~mesocosm+nspp) +xlim(0,1E8)
+
+
 # ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =(Algae-lag(Algae))/( 
 # 	(Daphnia+Diaphanosoma)-( lag(Daphnia)+lag(Diaphanosoma) )  ) ) )+
 #Just pop plots
@@ -654,6 +765,36 @@ grid.draw(rbind(gp1, gp2,gp3))
 pdf("./Dia_exp_v_simv1_a1_all_long.pdf",width = 8, height = 10)
 grid.draw(rbind(gp1, gp2,gp3))
 dev.off()
+
+#=============================================================================
+#Plots in combination with the real data using all data
+# m1_DIT is the real data
+# mDIT is the simulation data
+#=============================================================================
+colnames(mDIT)[18] = "temperature"
+colnames(mDIT)[19] = "mesocosm_id"
+
+p1 = ggplot()+ geom_line(data=m1_DIT, mapping= aes(x= (day_n-min(day_n)+1), y=N, group = mesocosm_id,color="1" )) +
+	geom_line(data=mDIT[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =Daphnia,  color = "2") )+
+	facet_grid(run~mesocosm+nspp)
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+  	ylab("Population (Daphnia")+
+  	theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+p2 = ggplot() + geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=ai1, color="1" )) +
+	geom_line(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =ai2,  color = "2" ) ) +
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+  	ylab("Bits (AI) ")+
+  	theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+p3 = ggplot()+ geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=alg_per_N, group = mesocosm_id,,color="1" )) +
+	geom_line(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =(alg_perDaph), color="2") )+
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+	xlab("Day")+
+  	ylab("Algae consumed per N ")
+
+gp1 = ggplotGrob(p1)
+gp2 = ggplotGrob(p2)
+gp3 = ggplotGrob(p3)
+grid.draw(rbind(gp1, gp2,gp3))
 
 
 
