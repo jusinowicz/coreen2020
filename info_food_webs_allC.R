@@ -301,7 +301,7 @@ for (w in 1:nwebs){
 ##Recursively flatten this into a data frame. 
 mDIT_tmp = data.frame(matrix( nrow=0, ncol =30 ) ) 
 ncnames = c("Algae", "Daphnia","Diaphanosoma","aiE","te1","te2", "te3","ee1","ee2",
-	"ee3","ai1","ai2","ai3","si1","si2","si3","run","mesocosm","nspp","alg_perDaph",
+	"ee3","ai1","ai2","ai3","si1","si2","si3","temperature","mesocosm_id","nspp","alg_perDaph",
 	"alg_perDia","zoo","alg_perzoo","alg_per_DDaph","alg_per_DDia","alg_per_Dzoo",
 	"m_alg_perDaph", "m_alg_perzoo", "m_Daph", "m_zoo" )
 colnames(mDIT_tmp) = ncnames
@@ -446,10 +446,14 @@ save(file="daphDia_DIT_50_vNat.var", "mDIT", "out1","out_inv1","di_web",
 #=============================================================================
 
 #Time series of Pop and aiE
-mDIT[mDIT$time<20,]%>% ggplot()+ 
+mDIT[mDIT$time<2.0,]%>% ggplot()+ 
   geom_line( aes(x = time, y =Daphnia, color="1"  ) )+ geom_line(aes(x = time, y =Diaphanosoma, color="2") )+ 
   facet_grid(run~mesocosm+nspp) +ylim(0,2E2)
-#ggsave("./aiE_algalperN_all.pdf", width = 8, height = 10)
+
+# mDIT[mDIT$time<2.0,]%>% ggplot()+ 
+#   geom_line( aes(x = time, y =(alg_perDaph)*Daphnia^2, color="1"  ) )+ geom_line(aes(x = time, y =(alg_perDia)*Diaphanosoma^2, color="2") )+ 
+#   facet_grid(run~mesocosm+nspp) + ylim(0,1.5E7)
+# #ggsave("./aiE_algalperN_all.pdf", width = 8, height = 10)
 
 mDIT[mDIT$time<20,]%>% ggplot()+ 
   geom_line( aes(x = time, y =Algae, color="1"  ) )+ geom_line(aes(x = time, y =Diaphanosoma, color="2") )+ 
@@ -490,8 +494,8 @@ facet_grid(mesocosm~nspp)
 
 #AIE and consumption
 mDIT[mDIT$time<20,] %>% ggplot()+ 
- geom_point( aes(x =alg_perDaph, y =ai2,  color="1" ) ) +geom_point( aes(x =alg_perDia, y =ai3,  color="2" ) )+  
- facet_grid(run~mesocosm+nspp) +xlim(0,1E5)
+ geom_point( aes(y =alg_perDaph, x =ai2,  color="1" ) ) +geom_point( aes(y =alg_perDia, x =ai3,  color="2" ) )+  
+ facet_grid(run~mesocosm+nspp) +ylim(0,1E5)
 
 mDIT[mDIT$time<20,] %>% ggplot()+ 
  geom_point( aes(y =alg_perDaph, x =ai2,  color=time ) ) + geom_point( aes(y =alg_perDia, x =ai3,  color="2" ) )+  
@@ -740,6 +744,7 @@ dev.off()
 m1_DIT_sub = subset(m1_DIT, species == "diaphanosoma" & temperature == 28& invade_monoculture == "dia invade") #Daphnia at 28 C
 mDIT_sub = subset(mDIT, mesocosm == "B" & nspp == 2) #Daphnia invasion 
 
+
 p1 = ggplot()+ geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=N, group = mesocosm_id,color="1" )) +
 	geom_line(data=mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =Diaphanosoma,  color = "2") )+
 	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
@@ -771,10 +776,26 @@ dev.off()
 # m1_DIT is the real data
 # mDIT is the simulation data
 #=============================================================================
-colnames(mDIT)[18] = "temperature"
-colnames(mDIT)[19] = "mesocosm_id"
 
-p1 = ggplot()+ geom_line(data=m1_DIT, mapping= aes(x= (day_n-min(day_n)+1), y=N, group = mesocosm_id,color="1" )) +
+m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, nspp == 2)
+colnames(mDIT_sub)[18] = "temperature"
+colnames(mDIT_sub)[19] = "mesocosm_id"
+
+
+p1 = ggplot()+
+	geom_line(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  	geom_line(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  	facet_grid(temperature~res_spp+inv_spp) +
+	geom_line(data=mDIT_sub[mDIT_sub$time<1.5,], mapping= aes(x = time*100, y =Daphnia,  color = "1") )+
+	geom_line(data=mDIT_sub[mDIT_sub$time<1.5,], mapping= aes(x = time*100, y =Diaphanosoma,  color = "2") )+
+	facet_grid(run~mesocosm+nspp)+
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+  	ylab("Population (Daphnia") +
+  	theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+
+ geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=N, group = mesocosm_id,color="1" )) +
+	facet_grid(temperature~invade_monoculture+species) +
 	geom_line(data=mDIT[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =Daphnia,  color = "2") )+
 	facet_grid(run~mesocosm+nspp)
 	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+

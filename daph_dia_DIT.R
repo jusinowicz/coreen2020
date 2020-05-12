@@ -369,10 +369,13 @@ for (i in 1:nmesos) {
 #Take all of the new data and combine it into one data frame: 
 m1_DIT = bind_rows(out1, .id = "column_label")
 m1_DIT=m1_DIT %>%
- mutate(alg_per_N = (10E6-algae_abundance)/N)  #"lead" lines up the result
+ mutate(alg_per_Nres = (10E6-algae_abundance)/N_res^2)  #"lead" lines up the result
+m1_DIT=m1_DIT %>%
+ mutate(alg_per_Ninv = (10E6-algae_abundance)/N_inv^2)  #"lead" lines up the result
 m1_DIT=m1_DIT %>%
  mutate(alg_per_Ndiff = (10E6-algae_abundance)/lead( N-lag(N),)) 
-m1_DIT$alg_per_N[is.infinite(m1_DIT$alg_per_N)] = NA
+m1_DIT$alg_per_Nres[is.infinite(m1_DIT$alg_per_Nres)] = NA
+m1_DIT$alg_per_Ninv[is.infinite(m1_DIT$alg_per_Ninv)] = NA
 m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
 
 
@@ -383,6 +386,12 @@ m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
 m1_DIT%>% ggplot()+ 
   geom_line( aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
   geom_line( aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)
+
+#To check algae consumption rates:
+m1_DIT%>% ggplot()+ 
+  geom_line( aes(x = day_n, y =(10E6-algae_abundance),  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_line( aes(x = day_n, y =(10E6-algae_abundance),  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
   facet_grid(temperature~invade_monoculture)
 
 #ggsave("./aiE_algalperN_all.pdf", width = 8, height = 10)
@@ -410,10 +419,18 @@ facet_grid(mesocosm~nspp)
 
 #AIE and consumption
 m1_DIT%>% ggplot()+ 
-  geom_point( aes(x = aiE, y =alg_per_N,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
-  geom_point( aes(x = aiE, y=alg_per_N,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  geom_point( aes(x = aiE, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_point( aes(x = aiE, y=alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
   facet_grid(temperature~invade_monoculture)  +ylim(0,2E7)
-  
+
+
+m1_DIT%>% ggplot()+ 
+  geom_point( aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_point( aes(x = ai1, y=alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  geom_point( aes(x = ai2, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_point( aes(x = ai2, y=alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)  +ylim(0,1E5)
+
 #=============================================================================
 #Fit GAMMs to the DIT results, grouping everything into one model with 
 #species and mesocosm as random effects.Fit fit the hump-shaped 
