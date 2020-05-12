@@ -330,15 +330,32 @@ for (i in 1:nmesos) {
     #treatment, and species information. 
 
     #Add the DIT to the data frames. There will be 11 new columns. 
-    DIT_tmp = matrix(0,nt2,11)
-    ncnames = c("N_res","N_inv","aiE","te1","te2","ee1","ee2","ai1","ai2","si1","si2")
+    DIT_tmp = matrix(0,nt2,13)
+    ncnames = c("N_res","N_inv","aiE","te1","te2","ee1","ee2","ai1","ai2","si1","si2",
+      "res_spp", "inv_spp" )
+    colnames(DIT_tmp) = ncnames
     DIT_tmp[,1:2] = as.matrix(pop_ts)
     DIT_tmp[(k+1):nt2,3] = aiE_web[[i]]$local
     DIT_tmp[(k+1):nt2,4:5] = di_web[[i]]$te_local
     DIT_tmp[(k*2):nt2,6:7] = di_web[[i]]$ee_local
     DIT_tmp[(k+1):nt2,8:9] = di_web[[i]]$ai_local
     DIT_tmp[(k+1):nt2,10:11] = di_web[[i]]$si_local
-    colnames(DIT_tmp) = ncnames
+    DIT_tmp[,12] = factor( DIT_tmp[,12],levels = levels(rspecies))
+    DIT_tmp[,13] = factor( DIT_tmp[,13],levels = levels(rspecies))
+
+    if( out1[[i]]$invade_monoculture[1] == "monoculture") {
+      DIT_tmp[,12] = unique(out1[[i]]$species)[1]
+      DIT_tmp[,13] = NA
+    } else {
+      if (out1[[i]]$invade_monoculture[1] == "daph invade"){
+        DIT_tmp[,12] = (rspecies)[2]
+        DIT_tmp[,13] = (rspecies)[1]
+      } else {
+        DIT_tmp[,12] = (rspecies)[1] 
+        DIT_tmp[,13] = (rspecies)[2]
+      }
+    }
+
     DIT_tmp = as.data.frame(DIT_tmp) 
     out1[[i]] = out1[[i]] %>% left_join(DIT_tmp)
 
