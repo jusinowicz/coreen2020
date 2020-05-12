@@ -330,9 +330,9 @@ for (i in 1:nmesos) {
     #treatment, and species information. 
 
     #Add the DIT to the data frames. There will be 11 new columns. 
-    DIT_tmp = matrix(0,nt2,13)
     ncnames = c("N_res","N_inv","aiE","te1","te2","ee1","ee2","ai1","ai2","si1","si2",
       "res_spp", "inv_spp" )
+    DIT_tmp = data.frame(matrix(0,nt2,13) )
     colnames(DIT_tmp) = ncnames
     DIT_tmp[,1:2] = as.matrix(pop_ts)
     DIT_tmp[(k+1):nt2,3] = aiE_web[[i]]$local
@@ -340,12 +340,12 @@ for (i in 1:nmesos) {
     DIT_tmp[(k*2):nt2,6:7] = di_web[[i]]$ee_local
     DIT_tmp[(k+1):nt2,8:9] = di_web[[i]]$ai_local
     DIT_tmp[(k+1):nt2,10:11] = di_web[[i]]$si_local
-    DIT_tmp[,12] = factor( DIT_tmp[,12],levels = levels(rspecies))
-    DIT_tmp[,13] = factor( DIT_tmp[,13],levels = levels(rspecies))
+    DIT_tmp[,12] = factor( levels = levels(rspecies))
+    DIT_tmp[,13] = factor( levels = levels(rspecies))
 
     if( out1[[i]]$invade_monoculture[1] == "monoculture") {
       DIT_tmp[,12] = unique(out1[[i]]$species)[1]
-      DIT_tmp[,13] = NA
+      DIT_tmp[,13] = unique(out1[[i]]$species)[1]
     } else {
       if (out1[[i]]$invade_monoculture[1] == "daph invade"){
         DIT_tmp[,12] = (rspecies)[2]
@@ -356,8 +356,8 @@ for (i in 1:nmesos) {
       }
     }
 
-    DIT_tmp = as.data.frame(DIT_tmp) 
-    out1[[i]] = out1[[i]] %>% left_join(DIT_tmp)
+    #DIT_tmp = as.data.frame(DIT_tmp) 
+    out1[[i]] = cbind(out1[[i]],DIT_tmp) #%>% left_join(DIT_tmp)
 
   }
 
@@ -381,26 +381,24 @@ m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
 #=============================================================================
 #Time series of Pop and aiE
 m1_DIT%>% ggplot()+ 
-  geom_point( aes(x = day_n, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
-  geom_line( aes(x = day_n, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
+  geom_line( aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_line( aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
   facet_grid(temperature~invade_monoculture)
+
 #ggsave("./aiE_algalperN_all.pdf", width = 8, height = 10)
 
 #Pop and consumption
 m1_DIT%>% ggplot()+ 
-  geom_point( aes(x = N, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
-  geom_line( aes(x = N, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
-  facet_grid(temperature~invade_monoculture)+ylim(0,1E7)
+  geom_point( aes(y = alg_per_N, x =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_point( aes(y = alg_per_N, x =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)
 
 #Pop and aiE
 m1_DIT%>% ggplot()+ 
-  geom_point( aes(x = N, y =ai1,  color = species, group = interaction(species,replicate_number) ) )+  
-  #geom_line( aes(x = N, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
-  facet_grid(temperature~invade_monoculture)
-
-m1_DIT%>% ggplot()+ 
-  geom_point( aes(x = aiE, y =N,  color = species, group = interaction(species,replicate_number) ) )+  
-  #geom_line( aes(x = N, y =aiE,  color = species, group = interaction(species,replicate_number) ) )+  
+  geom_point( aes(y = ai1, x =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_point( aes(y = ai1, x =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  geom_point( aes(y = ai2, x =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_point( aes(y = ai2, x =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
   facet_grid(temperature~invade_monoculture)
 
 m1_DIT%>% ggplot()+ 
@@ -412,11 +410,10 @@ facet_grid(mesocosm~nspp)
 
 #AIE and consumption
 m1_DIT%>% ggplot()+ 
-  geom_point( aes(x = aiE, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
-  #geom_line( aes(x = ai1, y =(alg_per_N),  color = species, group = interaction(species,replicate_number) ) )+  
-  facet_grid(temperature~invade_monoculture)+ylim(0,2E7)
-
-
+  geom_point( aes(x = aiE, y =alg_per_N,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_point( aes(x = aiE, y=alg_per_N,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)  +ylim(0,2E7)
+  
 #=============================================================================
 #Fit GAMMs to the DIT results, grouping everything into one model with 
 #species and mesocosm as random effects.Fit fit the hump-shaped 
