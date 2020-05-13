@@ -429,7 +429,7 @@ m1_DIT%>% ggplot()+
   geom_point( aes(x = ai1, y=alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
   geom_point( aes(x = ai2, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
   geom_point( aes(x = ai2, y=alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
-  facet_grid(temperature~invade_monoculture)  +ylim(0,1E5)
+  facet_grid(temperature~invade_monoculture)  +ylim(0,0.1E5)
 
 #=============================================================================
 #Fit GAMMs to the DIT results, grouping everything into one model with 
