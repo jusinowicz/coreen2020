@@ -38,9 +38,11 @@ source("./functions/info_theory_functions.R")
 #=============================================================================
 #Assuming that the data set "m1_data_long" exists already: 
 temps = unique(m1_data_long$temperature)
+inv_mon = unique(m1_data_long$invade_monoculture)
+temps = (unique(m1_data_long$temperature))
 
 #Length and time steps of each model run
-tend = 50
+tend = 100
 delta1 = 0.01
 tl=tend/delta1+1
 
@@ -88,7 +90,7 @@ for (w in 1:nwebs){
 
 	#############################
 	#Resource: 
-	spp_prms$rR = matrix(10E6, nRsp, 1) #intrinsic growth -- Not used here
+	spp_prms$rR = matrix(8, nRsp, 1) #intrinsic growth -- Not used here
 	spp_prms$Kr = matrix(10E6, nRsp, 1) #carrying capacity -- Constant algal addition
 
 	############################
@@ -144,7 +146,7 @@ for (w in 1:nwebs){
 	#coef(cl_daph[[5]])[1]/(coef(cR_daph[[5]])[1]*10e6)
 	spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
 	spp_prms$muC = matrix(0.0, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
-	
+	m1 = ((10E6*spp_prms$cC*spp_prms$rC-10E6*c(spp_prms$Kc)*spp_prms$cC^2)*spp_prms$rC)/spp_prms$rR[1]
 
 	########Predators: These are just dummy variables for now
 	spp_prms$rP =  matrix(0.0, 1, 1) #matrix(rnorm(nPsp,0.5,0), nPsp, 1) #intrisic growth
@@ -224,11 +226,29 @@ for (w in 1:nwebs){
 
 	out_inv1 [[w]] = a_temp
 	#Look at basic plots on the fly: 
-	plot(out_inv1 [[w]][,4],t="l",ylim=c(0,max(out_inv1 [[w]][tl,3:4])))
+
+	mlt1 = 1/delta1
+	plot(out_inv1 [[w]][1:(tl+1),1]*mlt1,out_inv1 [[w]][tl:(tl*2),4],t="l",ylim=c(0,max(out_inv1 [[w]][,3:4])),
+		xlim=c(0,100))
 	points(dia_tmp$day_n, dia_tmp$N)
-	lines( out_inv1 [[w]][,3],col="red")
+	lines(out_inv1 [[w]][1:(tl+1),1]*mlt1, out_inv1 [[w]][tl:(tl*2),3],col="red")
 	points(daph_tmp$day_n,daph_tmp$N, col="red")
-	  #=============================================================================
+
+	lines(out_inv1 [[w]][1:(tl),1], out1[[w]]$out[1:(tl),4],col="green")
+	lines(out_inv1 [[w]][1:(tl),1], out1[[w]]$out[1:(tl),3],col="blue")
+
+	#Look at basic plots on the fly: 
+	plot(out_inv1 [[w]][tl:(tl*2),4],t="l",ylim=c(0,max(out_inv1 [[w]][,3:4])),xlim=c(0,100))
+	points(dia_tmp$day_n, dia_tmp$N)
+	lines( out_inv1 [[w]][tl:(tl*2),3],col="red")
+	points(daph_tmp$day_n,daph_tmp$N, col="red")
+
+	#Look at basic plots on the fly: 
+	plot(out_inv1 [[w]][1:1000,1]*100,out_inv1 [[w]][1:1000,4],t="l",ylim=c(0,max(out_inv1 [[w]][,3:4])))
+	points(dia_tmp$day_n, dia_tmp$N)
+	lines(out_inv1 [[w]][1:1000,1]*100, out_inv1 [[w]][1:1000,3],col="red")
+	points(daph_tmp$day_n,daph_tmp$N, col="red")
+	#   #=============================================================================
 	  # Information processing networks
 	  #=============================================================================
 	  ## This code takes the population time-series counts output by the ODEs and 
@@ -299,24 +319,24 @@ for (w in 1:nwebs){
 #Post-loop processing to create a single data frame for plotting and stats
 #=============================================================================
 ##Recursively flatten this into a data frame. 
-mDIT_tmp = data.frame(matrix( nrow=0, ncol =32 ) ) 
+mDIT_tmp = data.frame(matrix( nrow=0, ncol =34 ) ) 
 ncnames = c("Algae", "N_res","N_inv", "res_spp","inv_spp", "aiE","te1","te2", "te3","ee1","ee2",
-	"ee3","ai1","ai2","ai3","si1","si2","si3","temperature","mesocosm_id","nspp","alg_per_Nres",
-	"alg_per_Ninv","zoo","alg_perzoo","alg_per_DDaph","alg_per_DDia","alg_per_Dzoo",
-	"m_alg_perDaph", "m_alg_perzoo", "m_Daph", "m_zoo" )
+	"ee3","ai1","ai2","ai3","si1","si2","si3","temperature","invade_monoculture","nspp","alg_per_Nres",
+	"alg_per_Ninv","zoo","alg_perzoo","alg_per_DRes","alg_per_DInv","alg_per_Dzoo",
+	"m_alg_perRes", "m_alg_perInv", "m_alg_perzoo", "m_Daph", "m_zoo","replicate_number" )
 colnames(mDIT_tmp) = ncnames
-mesocosms = factor(c("A","B")) #A is Daphnia invader, B is Daphnia resident
+#mesocosms = factor(c("A","B")) #A is Daphnia invader, B is Daphnia resident
 nspp = factor(c(1,2)) #1 is the pre-invasion phase, 2 is post-invasion phase
 for (f in 1:nwebs){
 	spp_prms = out1[[f]]$spp_prms
-	DIT_tmp = data.frame(matrix(0,nt2,32 ))
+	DIT_tmp = data.frame(matrix(0,nt2,34 ))
 	colnames(DIT_tmp) = ncnames
 
     DIT_tmp[,1] = as.matrix(out_inv1[[f]][,2])
-    DIT_tmp[1:(nt2/2),2] = as.matrix(out_inv1[[f]][1:(nt2/2),3]) #First Daph as invader
-    DIT_tmp[1:(nt2/2),3] = as.matrix(out_inv1[[f]][1:(nt2/2),4])
-    DIT_tmp[(nt2/2+1):nt2,2] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,4]) #Second Dia as invader
-    DIT_tmp[(nt2/2+1):nt2,3] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,3])
+    DIT_tmp[1:(nt2/2),2] = as.matrix(out_inv1[[f]][1:(nt2/2),4]) #First Daph as invader
+    DIT_tmp[1:(nt2/2),3] = as.matrix(out_inv1[[f]][1:(nt2/2),3])
+    DIT_tmp[(nt2/2+1):nt2,2] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,3]) #Second Dia as invader
+    DIT_tmp[(nt2/2+1):nt2,3] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,4])
     
     DIT_tmp[,4] = factor( levels = levels(rspecies)) #Invader/resident IDs
     DIT_tmp[,5] = factor( levels = levels(rspecies))
@@ -330,11 +350,11 @@ for (f in 1:nwebs){
     DIT_tmp[(k*2):nt2,10:12] = di_web[[f]]$ee_local[,2:4]
     DIT_tmp[(k+1):nt2,13:15] = di_web[[f]]$ai_local[,2:4]
     DIT_tmp[(k+1):nt2,16:18] = di_web[[f]]$si_local[,2:4]
-    DIT_tmp[,19] = f
+    DIT_tmp[,19] = temps[f]
 
-    DIT_tmp[,20] = factor(levels = levels(mesocosms))
-    DIT_tmp[1:nt2/2,20] = mesocosms[1]
-    DIT_tmp[(nt2/2+1):nt2,20] = mesocosms[2]
+    DIT_tmp[,20] = factor(levels = levels(inv_mon))
+    DIT_tmp[1:nt2/2,20] = inv_mon[2]
+    DIT_tmp[(nt2/2+1):nt2,20] = inv_mon[3]
 
     spp1 = c(1:(nt2/4),(nt2/2+1):(nt2/2+nt2/4))
     spp2 = c((nt2/4+1):(nt2/2),(nt2/2+nt2/4+1):nt2)
@@ -348,15 +368,18 @@ for (f in 1:nwebs){
 	# DIT_tmp[,21] = (c(spp_prms$Kr)-DIT_tmp$Algae)/DIT_tmp$Diaphanosoma
 	# DIT_tmp[,21] [is.infinite(DIT_tmp$alg_perDia)] = 0
 
-
-    DIT_tmp[,22] = (spp_prms$cC[1]*DIT_tmp$Algae)/DIT_tmp$Daphnia
+	#Resident
+    DIT_tmp[1:(nt2/2),22] = (spp_prms$cC[1]*DIT_tmp$Algae[1:(nt2/2)])/DIT_tmp[1:(nt2/2),2]#Daph
+	DIT_tmp[(nt2/2+1):nt2,22] = (spp_prms$cC[2]*DIT_tmp$Algae[(nt2/2+1):nt2])/DIT_tmp[(nt2/2+1):nt2,2]#Dia
 	DIT_tmp[,22][is.infinite(DIT_tmp$alg_perDaph)] = 0
 
-	DIT_tmp[,23] = (spp_prms$cC[2]*DIT_tmp$Algae)/DIT_tmp$Diaphanosoma
+	#Invader
+	DIT_tmp[1:(nt2/2),23] = (spp_prms$cC[2]*DIT_tmp$Algae[1:(nt2/2)])/DIT_tmp[1:(nt2/2),3]#Dia
+	DIT_tmp[(nt2/2+1):nt2,23]  = (spp_prms$cC[1]*DIT_tmp$Algae[(nt2/2+1):nt2])/DIT_tmp[(nt2/2+1):nt2,3]#Daph
 	DIT_tmp[,23] [is.infinite(DIT_tmp$alg_perDia)] = 0
 
+	#Total Zoo
 	DIT_tmp[,24] = DIT_tmp$Daphnia+DIT_tmp$Diaphanosoma
-
 	DIT_tmp[,25] = ((spp_prms$cC[1]+spp_prms$cC[2])*DIT_tmp$Algae)/DIT_tmp$zoo
 	DIT_tmp[,25] [is.infinite(DIT_tmp$alg_perzoo)] = 0
 
@@ -370,31 +393,43 @@ for (f in 1:nwebs){
 	# DIT_tmp[,26] = (c(spp_prms$Kr)-DIT_tmp$Algae)/c(NA,diff(DIT_tmp$zoo))
 	# DIT_tmp[,26][is.infinite(DIT_tmp$alg_per_Dzoo)] = 0
 
-	DIT_tmp[,26] = (spp_prms$cC[1]*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$Daphnia))
+	DIT_tmp[,26] = (spp_prms$cC[1]*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$N_res))
 	DIT_tmp[,26][is.infinite(DIT_tmp$alg_per_DDaph)] = 0
 
-	DIT_tmp[,27] = (spp_prms$cC[2]*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$Diaphanosoma))
+	DIT_tmp[,27] = (spp_prms$cC[2]*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$N_inv))
 	DIT_tmp[,27][is.infinite(DIT_tmp$alg_per_DDia)] = 0
 
 	DIT_tmp[,28] = ((spp_prms$cC[1]+spp_prms$cC[2])*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$zoo))
 	DIT_tmp[,28][is.infinite(DIT_tmp$alg_per_Dzoo)] = 0
 
-	DIT_tmp[,29] = mean(DIT_tmp$alg_perDaph )
-	DIT_tmp[,30] = mean(DIT_tmp$alg_perzoo )
-	DIT_tmp[,31] = mean(DIT_tmp$Daphnia )
-	DIT_tmp[,32] = mean(DIT_tmp$zoo )
+	DIT_tmp[1:(nt2/2),29] = mean(DIT_tmp$m_alg_perRes[1:(nt2/2)])
+	DIT_tmp[(nt2/2+1):nt2,29] = mean(DIT_tmp$m_alg_perRes[(nt2/2+1):nt2])
+
+	DIT_tmp[1:(nt2/2),30] = mean(DIT_tmp$m_alg_perInv[1:(nt2/2)])
+	DIT_tmp[(nt2/2+1):nt2,30] = mean(DIT_tmp$m_alg_perInv[(nt2/2+1):nt2])
+
+	DIT_tmp[,31] = mean(DIT_tmp$alg_perzoo,na.rm=T )
+	DIT_tmp[,32] = mean(DIT_tmp$N_res,na.rm=T)
+	DIT_tmp[,33] = mean(DIT_tmp$zoo,na.rm=T )
+	DIT_tmp[,34] = paste(f,DIT_tmp$res_spp,sep="")
+
 
     DIT_tmp = as.data.frame(DIT_tmp) 
     mDIT_tmp = rbind(mDIT_tmp,DIT_tmp)
 }
 
-#Add the time column
-#mDIT = cbind(time = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1), mDIT_tmp)
-mDIT = cbind(time = matrix(seq(0,tend,delta1),dim(mDIT_tmp)[1],1), mDIT_tmp)
-a1 = exp((mDIT$Algae-lag(mDIT$Algae))/(
-	(mDIT$Daphnia+mDIT$Diaphanosoma)-( lag(mDIT$Daphnia)+lag(mDIT$Diaphanosoma) )))
-a1[is.na(a1)] = 0
-a1[is.infinite(a1)] = 0
+#Add two time columns: time1 is absolute time from beginning of simulation, 
+#day_n is adjusted relative to the invasion event to match up with the 
+#experimental time scale
+inv_day = 28
+inv_day_n = ((tend*1/delta1+1) - inv_day )
+mDIT = cbind(time1 = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1), 
+	day_n =matrix(seq(0,(tend*2)*1/delta1+1,1)-inv_day_n,dim(mDIT_tmp)[1],1) , mDIT_tmp)
+
+# a1 = exp((mDIT$Algae-lag(mDIT$Algae))/(
+# 	(mDIT$Daphnia+mDIT$Diaphanosoma)-( lag(mDIT$Daphnia)+lag(mDIT$Diaphanosoma) )))
+# a1[is.na(a1)] = 0
+# a1[is.infinite(a1)] = 0
 
 #=============================================================================
 #Saving
@@ -405,7 +440,7 @@ a1[is.infinite(a1)] = 0
 # 	"te_web","si_web", "aiE_web")
 #save(file="daphDia_DIT_20_v00.var", "mDIT", "out1","out_inv1","di_web",
 #	"te_web","si_web", "aiE_web")
-save(file="daphDia_DIT_50_vNat.var", "mDIT", "out1","out_inv1","di_web",
+save(file="daphDia_DIT_10_vNat.var", "mDIT", "out1","out_inv1","di_web",
 	"te_web","si_web", "aiE_web")
 #=============================================================================
 #Loading
@@ -458,7 +493,14 @@ save(file="daphDia_DIT_50_vNat.var", "mDIT", "out1","out_inv1","di_web",
 #=============================================================================
 
 #Time series of Pop and aiE
-mDIT[mDIT$time<2.0,]%>% ggplot()+ 
+
+mDIT[mDIT$day_n>0 & mDIT$day_n<100,]%>% ggplot()+ 
+  geom_line( aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_line( aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)+ylim(0,2E2)
+
+
+mDIT[mDIT$time<1.0,]%>% ggplot()+ 
   geom_line( aes(x = time, y =N_res,  color = res_spp  ) )+  
   geom_line( aes(x = time, y =N_inv,  color = inv_spp ) )+  
   facet_grid(temperature~mesocosm_id+nspp) +ylim(0,2E2)
@@ -509,21 +551,15 @@ facet_grid(mesocosm~nspp)
 mDIT[mDIT$time<20,]%>% ggplot()+ 
   geom_point( aes(x = aiE, y =alg_per_Nres,  color = res_spp) )+  
   geom_point( aes(x = aiE, y=alg_per_Ninv,  color = inv_spp ) )+  
-  facet_grid(temperature~mesocosm_id+nspp) +ylim(0,2E2)
+  facet_grid(temperature~mesocosm_id+nspp) +ylim(0,2E4)
 
-
-mDIT[mDIT$time<20,] %>% ggplot()+ 
- geom_point( aes(y =alg_perDaph, x =ai2,  color="1" ) ) +geom_point( aes(y =alg_perDia, x =ai3,  color="2" ) )+  
- facet_grid(run~mesocosm+nspp) +ylim(0,1E5)
-
-mDIT[mDIT$time<20,] %>% ggplot()+ 
- geom_point( aes(y =alg_perDaph, x =ai2,  color=time ) ) + geom_point( aes(y =alg_perDia, x =ai3,  color="2" ) )+  
- facet_grid(run~mesocosm+nspp) +ylim(0,1E5)
-
-#AIE and consumption
-mDIT[mDIT$time<20,] %>% ggplot()+ 
- geom_point( aes(x =alg_per_DDaph, y =ai2,  color="1" ) ) +geom_point( aes(x =alg_per_DDia, y =ai3,  color="2" ) )+  
- facet_grid(run~mesocosm+nspp) +xlim(0,1E8)
+#AI and consumption
+mDIT[mDIT$time<20,]%>% ggplot()+ 
+  geom_point( aes(x = ai2, y =alg_per_Nres,  color = res_spp) )+  
+  geom_point( aes(x = ai2, y=alg_per_Ninv,  color = inv_spp ) )+
+  geom_point( aes(x = ai3, y =alg_per_Nres,  color = res_spp) )+  
+  geom_point( aes(x = ai3, y=alg_per_Ninv,  color = inv_spp ) )+    
+  facet_grid(temperature~mesocosm_id+nspp) +ylim(0,2E4)
 
 
 # ggplot()+ geom_point(data= mDIT, mapping= aes(x = aiE, y =(Algae-lag(Algae))/( 
@@ -796,10 +832,28 @@ dev.off()
 # mDIT is the simulation data
 #=============================================================================
 
+m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture" & temperature == 24 & inv_spp == "daphnia") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, nspp == 2 & temperature == 24& inv_spp == "daphnia")
+
 m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") #Daphnia at 28 C
 mDIT_sub = subset(mDIT, nspp == 2)
-colnames(mDIT_sub)[18] = "temperature"
-colnames(mDIT_sub)[19] = "mesocosm_id"
+
+ggplot()+ 
+  geom_line(data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_line( data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping=aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  geom_line(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_line(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)+ylim(0,2E2)+xlim(20,50)
+
+ggplot()+ 
+  geom_line(data=mDIT_sub, mapping= aes(x = time1*10-72, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_line( data=mDIT_sub, mapping=aes(x = time1*10-72, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  geom_line(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_line(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)+ylim(0,2E2) +xlim(20,50)
+
+
+
 
 
 p1 = ggplot()+

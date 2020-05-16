@@ -189,10 +189,10 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 				dR = R
 				for( i in 1:nRsp){
 					#Linear consumption rate
-					dR[i] = Kr[i]*a[[i]](times)- (t(cC[i,]*R[i])%*%C)
+					#dR[i] = Kr[i]*a[[i]](times)- (t(cC[i,]*R[i])%*%C)
 
 					#Logistic dynamics
-					#dR[i] = (a[[i]](times)-R[i]/Kr[i])*Kr[i]*R[i] - (t(cC[i,]*R[i])%*%C)
+					dR[i] = (a[[i]](times)-R[i]/Kr[i])*rR[i]*R[i] - (t(cC[i,]*R[i])%*%C)
 					#Etc. 
 					#dR[i] = a[[i]](times) - (t(cC[i,]*((R[i]-R[i]^2/Ki)))%*%C)
 					#dR[i] = a[[i]](times) - (t(cC[i,]*R[i])%*%C)
@@ -210,8 +210,8 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 					#dC[i] = ( (C[i] *cC[,i]*rC[i])%*%R ) * (b[[i]](times) - C[i]/Kc[i])
 					
 					#Classic resource-consumer
-					dC[i] = ( (C[i] *cC[,i]*rC[i])%*%R ) * (b[[i]](times) - cC[,i]*C[i] - cC[,-i]%*%C[-i] )
-					#dC[i] = ( (C[i] *rC[i])*b[[i]](times) ) * (cC[,i]%*%R - 1 )
+					#dC[i] = ( (C[i] *cC[,i]*rC[i])%*%R ) * (b[[i]](times) - cC[,i]*C[i] - cC[,-i]%*%C[-i] )
+					dC[i] = ( (C[i] )*b[[i]](times) ) * (cC[,i]*rC[i]%*%R -1 )
 					#dC[i] = C[i]  * (cC[,i]*rC[i]*b[[i]](times)*Kr - cC[,i]*rC[i]*cC[,i]*C[i] - cC[,i]*rC[i]*cC[,-i]%*%C[-i] )
 
 
