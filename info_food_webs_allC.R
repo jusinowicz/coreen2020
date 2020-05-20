@@ -147,13 +147,18 @@ for (w in 1:nwebs){
 	spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
 	spp_prms$muC = matrix(0.0, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates
 	m1 = ((10E6*spp_prms$cC*spp_prms$rC-10E6*c(spp_prms$Kc)*spp_prms$cC^2)*spp_prms$rC)/spp_prms$rR[1]
-
+	
 	########Predators: These are just dummy variables for now
 	spp_prms$rP =  matrix(0.0, 1, 1) #matrix(rnorm(nPsp,0.5,0), nPsp, 1) #intrisic growth
 	spp_prms$eFp = matrix(1,1,nCsp) # just make the efficiency for everything 1 for now
 	spp_prms$muP = matrix(0.0, 1, 1)#matrix(rnorm(nPsp,0.6,0), nPsp, 1)  #mortality rates
 	#Consumption rates: 
 	spp_prms$cP = matrix(c(0.0,0.0),nCsp,1)
+	spp_prms$aii = matrix(c(0.10,0.08),1,2)
+	spp_prms$aij = matrix(c(0.10,0.08),1,2)
+
+	aii = (10E6*spp_prms$cC^2*spp_prms$rC)/spp_prms$rR[1]
+	aij = (10E6*spp_prms$cC*spp_prms$cC[2:1]*spp_prms$rC)/spp_prms$rR[1]
 
 
 	#=============================================================================
@@ -164,7 +169,7 @@ for (w in 1:nwebs){
 	# spp_prms	The parameters of all species in the food web
 	#=============================================================================
 	#
-	winit = matrix(c(10E6,4,4,0))
+	winit = matrix(c(10E6,4,0,0))
 	tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
 		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 
