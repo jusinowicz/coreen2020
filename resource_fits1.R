@@ -94,7 +94,7 @@ m1_data_long %>%
   ggplot(aes(x = day_n, y = N, color = species, group = interaction(species,replicate_number)))+
   geom_line()+
   facet_grid(temperature~invade_monoculture)+
-  scale_y_log10()+
+  #scale_y_log10()+
   theme_bw()+
   scale_color_manual(values = c("dodgerblue1", "red1"), name = NA)+
   xlab("day")+
@@ -113,7 +113,7 @@ rspecies = unique(m1_data_long$species)
 invader = unique(m1_data_long$invade_monoculture)
 invasions_per = length(treats)/4 #Treatment entries correponding to each spp 
 inv_day = 28 #The first day of attempted invasion
-inv_end = 200#The last day of invasion conditions
+inv_end = 50#The last day of invasion conditions
 no_reps = 18 #The number of replicated mesocosms total per resident/invader
 
 #=============================================================================
@@ -167,10 +167,20 @@ cR_daph_pred = NULL
 cR_dia_pred = NULL
 
 #Fit competition models per temperature 
+igr_daph = vector("list", 6)
+igr_dia = vector("list", 6)
+igrij_daph = vector("list", 6)
+igrij_dia = vector("list", 6)
+
 lvii_daph = vector("list", 6)
 lvii_dia = vector("list", 6)
 lvij_daph = vector("list", 6)
 lvij_dia = vector("list", 6)
+
+igr_daph_pred = NULL
+igr_dia_pred = NULL
+igrij_daph_pred = NULL
+igrij_dia_pred = NULL
 
 lvii_daph_pred = NULL
 lvii_dia_pred = NULL
@@ -618,122 +628,273 @@ for(t in 1:6) {
   #=============================================================================
   #Fit intraspecific competition coefficients directly using the single species and invasion
   #scenarios.
-  #1. Lotka Volterra
+  #Get the intrinsic growth rate of each species
+  # igr = formula (N ~  I(a1*exp(c1*day_n ) ) )
+  igr = formula (N ~  a1/(1+b1*exp(c1*day_n ) ) )
+ 
+  #Adjust the days to make both data sets line up
+  daph_tmpb=daph_tmp
+  daph_tmpb$day_n[daph_tmpb$day_n>inv_day] = daph_tmpb$day_n[daph_tmpb$day_n>inv_day]-inv_day 
 
-  #f_lvii = formula ( I(log(Ndiff)) ~  ri*(ki-aii*N) )
-  #f_lvii = formula ( Ndiff ~  ri*(1-aii*N) )
-  f_lvii = formula ( Ndiff ~  ri/(1+aii*N) )
-
-
-  #Daphnia
-  #lm_ii = lm(data=daph_tmp, Ndiff ~ N)
-  #ri=coef(lm_ii)[1]
-  #ri=1
+  #Fit the model
   tryCatch({ 
-    lvii_daph[[t]] = nls( formula= f_lvii, data = daph_tmp, 
-    start=list(ri=2, aii=0.5 ),
+    igr_daph[[t]] = nls( formula= igr, data = daph_tmpb, 
+    #start=list(c1=(as.numeric(coef(igr1)[2])), a1=exp(as.numeric(coef(igr1)[1] ) ) ),
+    start=list(c1=.05, a1=max(daph_tmpb$N),b1=1 ),
     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
-  }, error = function(e) {} ) 
-    #lvii_daph[[t]]$ri = ri
+
     #Predicted values: 
-    s=seq(1,max(daph_tmp$N),1 )
+    s=seq(min(daph_tmp$day_n),max(daph_tmp$day_n),1 )
     #s=seq(0,maxT,1 )
-    if( is.null(lvii_daph[[t]]) ) {
-        f_lvii = formula ( Ndiff ~  ri*(1-aii*N) )
-        lvii_daph[[t]] =  nls( formula= f_lvii, data = daph_tmp, 
-        start=list(ri=2, aii=0.5 ),
-        control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
-    }
-
-    d_tmp = predict(lvii_daph[[t]], list( N = s ) )
-    lvii_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
-    lvii_daph_pred = rbind(lvii_daph_pred, lvii_daph_tmp)
-
-  #Dia
-  #lm_ii = lm(data=dia_tmp, Ndiff ~ N)
-  #ri=coef(lm_ii)[1]
-  #ri=1
-  tryCatch({ 
-    lvii_dia[[t]] = nls( formula= f_lvii, data = dia_tmp, 
-    start=list(ri=2, aii=0.5 ),
-    control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+    d_tmp = predict(igr_daph[[t]], list( day_n = s ) )
+    igr_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+    igr_daph_pred = rbind(igr_daph_pred, igr_daph_tmp)
   }, error = function(e) {} ) 
-    #lvii_dia[[t]]$ri = ri
+
+  #Make new columns out of the fitted data
+  igr_daph_tmp$N = igr_daph_tmp$N_pred
+  igr_daph_tmp$Ndiff = (igr_daph_tmp$N_pred-lag(igr_daph_tmp$N_pred))/
+                        (igr_daph_tmp$s-lag(igr_daph_tmp$s))*1/igr_daph_tmp$N_pred
+
+  #The fitted data should be straightforward: 
+  lvii_daph[[t]] = lm(data=igr_daph_tmp, Ndiff ~ N)
+  s=seq(1,max(daph_tmp$N),1 )
+  d_tmp = predict(lvii_daph[[t]], list( N = s ) )
+  lvii_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+  lvii_daph_pred = rbind(lvii_daph_pred, lvii_daph_tmp)
+
+
+  #Dia 
+  #Adjust the days to make both data sets line up
+  dia_tmpb=dia_tmp
+  dia_tmpb$day_n[dia_tmpb$day_n>inv_day] = dia_tmpb$day_n[dia_tmpb$day_n>inv_day]-inv_day 
+
+  #Fit the model
+  tryCatch({ 
+    igr_dia[[t]] = nls( formula= igr, data = dia_tmpb, 
+    #start=list(c1=(as.numeric(coef(igr1)[2])), a1=exp(as.numeric(coef(igr1)[1] ) ) ),
+    start=list(c1=.05, a1=max(dia_tmpb$N),b1=1 ),
+    control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+
     #Predicted values: 
-    s=seq(1,max(dia_tmp$N),1 )
-    if( is.null(lvii_dia[[t]]) ) {
-        f_lvii = formula ( Ndiff ~  ri*(1-aii*N) )
-        lvii_dia[[t]] =  nls( formula= f_lvii, data = dia_tmp, 
-        start=list(ri=2, aii=0.5 ),
-        control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
-    }
+    s=seq(min(dia_tmp$day_n),max(dia_tmp$day_n),1 )
+    #s=seq(0,maxT,1 )
+    d_tmp = predict(igr_dia[[t]], list( day_n = s ) )
+    igr_dia_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+    igr_dia_pred = rbind(igr_dia_pred, igr_dia_tmp)
+  }, error = function(e) {} ) 
 
-    d_tmp = predict(lvii_dia[[t]], list( N = s ) )
-    lvii_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
-    lvii_dia_pred = rbind(lvii_dia_pred, lvii_dia_tmp)
+  #Make new columns out of the fitted data
+  igr_dia_tmp$N = igr_dia_tmp$N_pred
+  igr_dia_tmp$Ndiff = (igr_dia_tmp$N_pred-lag(igr_dia_tmp$N_pred))/
+                        (igr_dia_tmp$s-lag(igr_dia_tmp$s))*1/igr_dia_tmp$N_pred
 
-#=============================================================================
+  #The fitted data should be straightforward: 
+  lvii_dia[[t]] = lm(data=igr_dia_tmp, Ndiff ~ N)
+  s=seq(1,max(dia_tmp$N),1 )
+  d_tmp = predict(lvii_dia[[t]], list( N = s ) )
+  lvii_dia_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+  lvii_dia_pred = rbind(lvii_dia_pred, lvii_dia_tmp)
+  #=============================================================================
   #Fit interspecific competition coefficients directly using the invasion
   #scenarios.
-  #1. Lotka Volterra
-  #Use the growth rate from the intraspecific fits
-
-  f_lvij = formula ( Ndiff ~  ri*(1-aij*N_res) )
-  #f_lvij = formula ( Ndiff ~  ri/(1+aij*N_res) )
-  #f_lvij = formula ( Ndiff ~  ri/(1+aii*N_inv+aij*N_res) )
-  #f_lvij = formula ( Ndiff ~  ri*(1-aii*N_inv-aij*N_res) )
-
-
-  #Daphnia
-  #lm_ij = lm(data=daph_inv_tmp, Ndiff ~ N_res)
-  #ri=lvii_daph[[t]]$ri
-  #ri = subset(lvii_daph_pred,s == 1 & temperature == temps[t] )$N_pred[1]
-  #ri=1
-  aii = coef(lvii_daph[[t]])[2]
-  # ri = coef(lvii_daph[[t]])[1]
+  #igrij = formula (N_inv ~  (b1*exp(c1*day_n ) ) )
+  igrij = formula (N_inv ~  a1/(1+b1*exp(c1*day_n ) ) )
+ 
+  a1 = max(daph_inv_tmp$N_inv )
+  #Fit the model
   tryCatch({ 
-    lvij_daph[[t]] = nls( formula= f_lvij, data = daph_inv_tmp, 
-    start=list(ri=coef(lvii_daph[[t]])[1], aij=0.5 ),
+    igrij_daph[[t]] = nls( formula= igrij, data = daph_inv_tmp, 
+    #start=list(c1=(as.numeric(coef(igr1)[2])), a1=exp(as.numeric(coef(igr1)[1] ) ) ),
+    start=list(c1=-.05, b1=2 ),
     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
-  }, error = function(e) {} ) 
-    lvij_daph[[t]]$ri = ri
+
     #Predicted values: 
-    s=seq(1,max(daph_inv_tmp$N_res,na.rm=T),1 )
+    s=seq(min(daph_inv_tmp$day_n),max(daph_tmp$day_n),1 )
     #s=seq(0,maxT,1 )
-    # if( is.null(cR_dia[[t]]) ) {
-    #     cR_dia[[t]] = c1
-    #     d_tmp = exp(predict(cR_dia[[t]], list( algae_abundance= s ) ) )
-    # }else {
-    #     d_tmp = predict(cR_dia[[t]], list( algae_abundance= s ) )
-    # }
-    d_tmp = predict(lvij_daph[[t]], list( N_res = s ) )
-    lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
-    lvij_daph_pred = rbind(lvij_daph_pred, lvij_daph_tmp)
+    d_tmp = predict(igrij_daph[[t]], list( day_n = s ) )
+    igrij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+    igrij_daph_pred = rbind(igrij_daph_pred, igrij_daph_tmp)
+  }, error = function(e) {} ) 
+
+  #Make new columns out of the fitted data
+  igrij_daph_tmp$N = igrij_daph_tmp$N_pred
+  igrij_daph_tmp$Ndiff = (igrij_daph_tmp$N_pred-lag(igrij_daph_tmp$N_pred))/
+                        (igrij_daph_tmp$s-lag(igrij_daph_tmp$s))*1/igrij_daph_tmp$N_pred
+
+  #The fitted data should be straightforward: 
+  lvij_daph[[t]] = lm(data=igrij_daph_tmp, Ndiff ~ N)
+  s=seq(1,max(daph_tmp$N),1 )
+  d_tmp = predict(lvij_daph[[t]], list( N = s ) )
+  lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+  lvij_daph_pred = rbind(lvij_daph_pred, lvij_daph_tmp)
 
   #Dia
-  #lm_ij = lm(data=dia_inv_tmp, Ndiff ~ N_res)
-  #ri=lvii_dia[[t]]$ri
-  #ri = subset(lvii_dia_pred,s == 1 & temperature == temps[t] )$N_pred[1]
-  #ri=1
-  aii = coef(lvii_dia[[t]])[2]
+
+  a1 = max(dia_inv_tmp$N_inv )
+  #Fit the model
   tryCatch({ 
-    lvij_dia[[t]] = nls( formula= f_lvij, data = dia_inv_tmp, 
-    start=list(ri =coef(lvii_dia[[t]])[1], aij=0.5 ),
+    igrij_dia[[t]] = nls( formula= igrij, data = dia_inv_tmp, 
+    #start=list(c1=(as.numeric(coef(igr1)[2])), a1=exp(as.numeric(coef(igr1)[1] ) ) ),
+    start=list(c1=-.05, b1=2 ),
     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
-  }, error = function(e) {} ) 
-    lvij_dia[[t]]$ri = ri
+
     #Predicted values: 
-    s=seq(1,max(dia_inv_tmp$N_res,na.rm=T),1 )
+    s=seq(min(dia_inv_tmp$day_n),max(dia_tmp$day_n),1 )
     #s=seq(0,maxT,1 )
-    # if( is.null(cR_dia[[t]]) ) {
-    #     cR_dia[[t]] = c1
-    #     d_tmp = exp(predict(cR_dia[[t]], list( algae_abundance= s ) ) )
-    # }else {
-    #     d_tmp = predict(cR_dia[[t]], list( algae_abundance= s ) )
-    # }
-    d_tmp = predict(lvij_dia[[t]], list( N_res = s ) )
-    lvij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
-    lvij_dia_pred = rbind(lvij_dia_pred, lvij_dia_tmp)
+    d_tmp = predict(igrij_dia[[t]], list( day_n = s ) )
+    igrij_dia_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+    igrij_dia_pred = rbind(igrij_dia_pred, igrij_dia_tmp)
+  }, error = function(e) {} ) 
+
+  #Make new columns out of the fitted data
+  igrij_dia_tmp$N = igrij_dia_tmp$N_pred
+  igrij_dia_tmp$Ndiff = (igrij_dia_tmp$N_pred-lag(igrij_dia_tmp$N_pred))/
+                        (igrij_dia_tmp$s-lag(igrij_dia_tmp$s))*1/igrij_dia_tmp$N_pred
+
+  #The fitted data should be straightforward: 
+  lvij_dia[[t]] = lm(data=igrij_dia_tmp, Ndiff ~ N)
+  s=seq(1,max(dia_tmp$N),1 )
+  d_tmp = predict(lvij_dia[[t]], list( N = s ) )
+  lvij_dia_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+  lvij_dia_pred = rbind(lvij_dia_pred, lvij_dia_tmp)
+  
+  #=============================================================================
+#   #Fit intraspecific competition coefficients directly using the single species and invasion
+#   #scenarios.
+#   #1. Lotka Volterra
+
+#   #f_lvii = formula ( I(log(Ndiff)) ~  ri*(ki-aii*N) )
+#   #f_lvii = formula ( Ndiff ~  ri*(1-aii*N) )
+#   f_lvii = formula ( Ndiff ~  ri/(1+aii*N) )
+
+
+#   #Daphnia
+#   lm_ii = lm(data=igr_daph_tmp, Ndiff ~ N)
+#   #ri=coef(lm_ii)[1]
+#   #ri=1
+#   tryCatch({ 
+#     lvii_daph[[t]] = nls( formula= f_lvii, data = igr_daph_tmp, 
+#     start=list(ri=2, aii=0.5 ),
+#     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+#   }, error = function(e) {} ) 
+#     #lvii_daph[[t]]$ri = ri
+#     #Predicted values: 
+#     s=seq(1,max(daph_tmp$N),1 )
+#     #s=seq(0,maxT,1 )
+#     if( is.null(lvii_daph[[t]]) ) {
+#         f_lvii = formula ( Ndiff ~  ri*(1-aii*N) )
+#         lvii_daph[[t]] =  nls( formula= f_lvii, data = daph_tmp, 
+#         start=list(ri=2, aii=0.5 ),
+#         control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+#     }
+
+#     d_tmp = predict(lvii_daph[[t]], list( N = s ) )
+#     lvii_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+#     lvii_daph_pred = rbind(lvii_daph_pred, lvii_daph_tmp)
+
+#   #Dia
+#   #lm_ii = lm(data=dia_tmp, Ndiff ~ N)
+#   #ri=coef(lm_ii)[1]
+#   #ri=1
+#   tryCatch({ 
+#     lvii_dia[[t]] = nls( formula= f_lvii, data = dia_tmp, 
+#     start=list(ri=2, aii=0.5 ),
+#     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+#   }, error = function(e) {} ) 
+#     #lvii_dia[[t]]$ri = ri
+#     #Predicted values: 
+#     s=seq(1,max(dia_tmp$N),1 )
+#     if( is.null(lvii_dia[[t]]) ) {
+#         f_lvii = formula ( Ndiff ~  ri*(1-aii*N) )
+#         lvii_dia[[t]] =  nls( formula= f_lvii, data = dia_tmp, 
+#         start=list(ri=2, aii=0.5 ),
+#         control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+#     }
+
+#     d_tmp = predict(lvii_dia[[t]], list( N = s ) )
+#     lvii_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
+#     lvii_dia_pred = rbind(lvii_dia_pred, lvii_dia_tmp)
+
+# #=============================================================================
+#   #Fit interspecific competition coefficients directly using the invasion
+#   #scenarios.
+
+
+
+#   f_lvij = formula ( Ndiff ~  ri*(1-aij*N_res) )
+#   #f_lvij = formula ( Ndiff ~  ri/(1+aij*N_res) )
+#   #f_lvij = formula ( Ndiff ~  ri/(1+aii*N_inv+aij*N_res) )
+#   #f_lvij = formula ( Ndiff ~  ri*(1-aii*N_inv-aij*N_res) )
+
+
+#   #Daphnia
+#   #lm_ij = lm(data=daph_inv_tmp, Ndiff ~ N_res)
+#   #ri=lvii_daph[[t]]$ri
+#   #ri = subset(lvii_daph_pred,s == 1 & temperature == temps[t] )$N_pred[1]
+#   #ri=1
+#   aii = coef(lvii_daph[[t]])[2]
+#   # ri = coef(lvii_daph[[t]])[1]
+#   tryCatch({ 
+#     lvij_daph[[t]] = nls( formula= f_lvij, data = daph_inv_tmp, 
+#     start=list(ri=coef(lvii_daph[[t]])[1], aij=0.5 ),
+#     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+#   }, error = function(e) {} ) 
+#     lvij_daph[[t]]$ri = ri
+#     #Predicted values: 
+#     s=seq(1,max(daph_inv_tmp$N_res,na.rm=T),1 )
+#     #s=seq(0,maxT,1 )
+#     # if( is.null(cR_dia[[t]]) ) {
+#     #     cR_dia[[t]] = c1
+#     #     d_tmp = exp(predict(cR_dia[[t]], list( algae_abundance= s ) ) )
+#     # }else {
+#     #     d_tmp = predict(cR_dia[[t]], list( algae_abundance= s ) )
+#     # }
+#     d_tmp = predict(lvij_daph[[t]], list( N_res = s ) )
+#     lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+#     lvij_daph_pred = rbind(lvij_daph_pred, lvij_daph_tmp)
+
+#   #Dia
+
+#   # c1 = lm(I(log(N+1))~I(day_n ), data = dia_tmp ) 
+#   # tryCatch({ 
+#   #   cR_dia[[t]] = nls( formula= cR, data = dia_tmp, 
+#   #   start=list(c1=(as.numeric(coef(c1)[2])), a1=exp(as.numeric(coef(c1)[1] ) ) ),
+#   #   control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+
+#   #   #Predicted values: 
+#   #   s=seq(min(dia_tmp$day_n),max(dia_tmp$day_n),1 )
+#   #   #s=seq(0,maxT,1 )
+#   #   d_tmp = predict(cR_dia[[t]], list( day_n = s ) )
+#   #   dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
+#   #   cR_dia_pred = rbind(cR_dia_pred, dia_pred_tmp)
+#   # }, error = function(e) {} ) 
+
+#   #1. Lotka Volterra
+#   #Use the growth rate from the intraspecific fits
+#   #lm_ij = lm(data=dia_inv_tmp, Ndiff ~ N_res)
+#   #ri=lvii_dia[[t]]$ri
+#   #ri = subset(lvii_dia_pred,s == 1 & temperature == temps[t] )$N_pred[1]
+#   #ri=1
+#   aii = coef(lvii_dia[[t]])[2]
+#   tryCatch({ 
+#     lvij_dia[[t]] = nls( formula= f_lvij, data = dia_inv_tmp, 
+#     start=list(ri =coef(lvii_dia[[t]])[1], aij=0.5 ),
+#     control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+#   }, error = function(e) {} ) 
+#     lvij_dia[[t]]$ri = ri
+#     #Predicted values: 
+#     s=seq(1,max(dia_inv_tmp$N_res,na.rm=T),1 )
+#     #s=seq(0,maxT,1 )
+#     # if( is.null(cR_dia[[t]]) ) {
+#     #     cR_dia[[t]] = c1
+#     #     d_tmp = exp(predict(cR_dia[[t]], list( algae_abundance= s ) ) )
+#     # }else {
+#     #     d_tmp = predict(cR_dia[[t]], list( algae_abundance= s ) )
+#     # }
+#     d_tmp = predict(lvij_dia[[t]], list( N_res = s ) )
+#     lvij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t], s=s, N_pred = d_tmp )
+#     lvij_dia_pred = rbind(lvij_dia_pred, lvij_dia_tmp)
 
 
 
@@ -749,6 +910,40 @@ cR_pred = rbind(cR_daph_pred,cR_dia_pred)
 #competition
 lvii_pred = rbind(lvii_daph_pred, lvii_dia_pred)
 lvij_pred = rbind(lvij_daph_pred, lvij_dia_pred)
+
+aii_all = matrix(0,6,2)
+aij_all = matrix(0,6,2)
+ci_all = matrix(0,6,2)
+wi_all = matrix(0,6,2)
+
+for(n in 1:6){ 
+  aii_all[n,1] = coef(lvii_daph[[n]])[2]
+  aii_all[n,2] = coef(lvii_dia[[n]])[2]
+  aij_all[n,1] = coef(lvij_daph[[n]])[2]
+  aij_all[n,2] = coef(lvij_dia[[n]])[2]
+  ci_all[n,1] = coef(cl_daph[[n]])[1]
+  ci_all[n,2] = coef(cl_dia[[n]])[1]
+  wi_all[n,1] = coef(cR_daph[[n]])[1]
+  wi_all[n,2] = coef(cR_dia[[n]])[1]
+}
+
+aiib_all = ci_all^2*wi_all
+aijb_all = ci_all*ci_all[,2:1]*wi_all
+
+rho1 = matrix(0,6,2)
+rho1b = matrix(0,6,2)
+the1 = matrix(0,6,2)
+the1b = matrix(0,6,2)
+
+rho1[,1] = aij_all[,1]/(sqrt(aii_all[,1]*aii_all[,2]) )
+rho1[,2] = aij_all[,2]/(sqrt(aii_all[,1]*aii_all[,2]))
+rho1b[,1] = aijb_all[,1]/(sqrt(aiib_all[,1]*aiib_all[,2]))
+rho1b[,2] = aijb_all[,2]/(sqrt(aiib_all[,1]*aiib_all[,2]))
+
+the1[,1] = sqrt(aii_all[,1]/aii_all[,2])
+the1[,2] = sqrt(aii_all[,2]/aii_all[,1])
+the1b[,1] = sqrt(aiib_all[,1]/aiib_all[,2])
+the1b[,2] = sqrt(aiib_all[,2]/aiib_all[,1])
 
 
 #=============================================================================
