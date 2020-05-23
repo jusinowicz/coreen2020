@@ -38,6 +38,83 @@ alg_replace = function(m1_data_long){
 
 }
 
+#=============================================================================
+#get_new_mono()
+# Build the needed sub data sets, which are broken down by temperature and 
+# species and include a new column for the growth rate. This function is only
+# meaningful for this particular data set. 
+# Adds Ndiff, which is dN/dt * 1/N
+# Adds Adiff, which is starting algae - ending algae. 
+#=============================================================================
+get_new_mono = function (m1_data_long, species1, temperature,inv_day ) {
+    all_species = unique(m1_data_long$species)
+    all_invasions = unique(m1_data_long$invade_monoculture)
+
+    if(species1 == "daphnia") {invasion = all_invasions[3]} else {invasion = all_invasions[2]}
+
+    mesos1 = subset(m1_data_long,species == species1 & invade_monoculture == "monoculture" )
+    mesos2 = subset(m1_data_long,species == species1 & invade_monoculture == invasion )
+    mesos2 = mesos2[ mesos2$day_n<=inv_day, ]
+    mesos_species = rbind(mesos1,mesos2)
+    species_tmp = subset(mesos_species, temperature == temps[t])
+
+    #Add the rate of population growth, Ndiff
+    dp1 = subset(species_tmp,!is.na(species_tmp$N) ) %>%    
+            arrange(replicate_number) %>%
+            mutate(Ndiff = (N-lag(N))/(day_n-lag(day_n))*1/N )  #"lead" lines up the result
+    dp1$Ndiff[is.infinite(dp1$Ndiff)] = NA
+    species_tmp = species_tmp %>% left_join(dp1)
+
+    #Add the rate of algal consumption, Adiff
+    species_tmp = species_tmp %>%    
+            arrange(replicate_number) %>%
+            mutate(Adiff = algae_start-algae_abundance)  #"lead" lines up the result 
+    species_tmp$Adiff[is.infinite(species_tmp$Adiff)] = NA
+
+    return(species_tmp)
+
+}
+
+#=============================================================================
+#get_new_inv()
+# Build the needed sub data sets, which are broken down by temperature and 
+# species and include a new column for the growth rate. This function is only
+# meaningful for this particular data set. 
+# Adds Ndiff, which is dN/dt * 1/N
+# Adds Adiff, which is starting algae - ending algae. 
+#=============================================================================
+get_new_inv = function (m1_data_long, species1, temperature,inv_day,inv_end ) {
+  
+  all_species = unique(m1_data_long$species)
+  all_invasions = unique(m1_data_long$invade_monoculture)
+  species2 = all_species[all_species != species1 ] #The resident 
+
+  if(species1 == "daphnia") {invasion = all_invasions[2]} else {invasion = all_invasions[3]}
+  mesos2 = subset(m1_data_long, invade_monoculture == invasion )
+  mesos2 =  mesos2[ mesos2$day_n>=inv_day & mesos2$day_n <= inv_end , ]
+  species_tmp = subset(mesos2, temperature == temps[t])
+
+  #Creates specific columns designating invader and resident: 
+  dp2i = subset(species_tmp, species == species1)
+  dp2r = subset(species_tmp, species == species2)
+  colnames(dp2i)[colnames(dp2i)=="N"] = "N_inv"
+  colnames(dp2r)[colnames(dp2r)=="N"] = "N_res"
+  species_inv_tmp = dp2i %>% 
+    left_join(dp2r[,c("day_n","mesocosm_id","N_res")], by=c("day_n","mesocosm_id"))
+
+  #Add the rate of population growth, Ndiff
+  dp1 = subset(species_inv_tmp,!is.na(species_inv_tmp$N_inv) ) %>%    
+            arrange(replicate_number) %>%
+            mutate(Ndiff = (N_inv-lag(N_inv))/(day_n-lag(day_n))*1/N_inv) #"lead" lines up the result 
+  dp1$Ndiff[is.infinite(dp1$Ndiff)] = NA
+  species_inv_tmp = species_inv_tmp %>% left_join(dp1)
+  
+
+  return(species_inv_tmp)
+
+}
+
+
 #################
 #There are two different approaches to fitting this. For now, just 
 #comment/uncomment based on the approach: 
@@ -51,93 +128,6 @@ alg_replace = function(m1_data_long){
 
 for(t in 1:ntemps) { 
 
-  #=============================================================================
-  #Intraspecific and resource consumption:
-
-  #Get the data for each temperature. 
-  daph_tmp = subset(mesos_daph, temperature == temps[t])
-  dia_tmp = subset(mesos_dia, temperature == temps[t])
-
-
-  #Remove NA entries! 
-  # daph_tmp = daph_tmp[!is.na(daph_tmp$Adiff) & !is.na(daph_tmp$N), ]
-  # dia_tmp = dia_tmp[!is.na(dia_tmp$Adiff) & !is.na(dia_tmp$N), ]
-
-  daph_tmp = daph_tmp[!is.na(daph_tmp$N), ]
-  dia_tmp = dia_tmp[ !is.na(dia_tmp$N), ]
-
-  #Add the rate of population growth, Ndiff
-  dp1 = subset(daph_tmp,!is.na(daph_tmp$N) ) %>%    
-            arrange(replicate_number) %>%
-            mutate(Ndiff = (N-lag(N))/(day_n-lag(day_n))*1/N )  #"lead" lines up the result
-            #mutate(Ndiff = (N/lag(N))/(day_n/lag(day_n)) ) #"lead" lines up the result 
-  dp1$Ndiff[is.infinite(dp1$Ndiff)] = NA
-
-  daph_tmp = daph_tmp %>% left_join(dp1)
-
-  da1 = subset(dia_tmp,!is.na(dia_tmp$N) ) %>%    
-            arrange(replicate_number) %>%
-            mutate(Ndiff = (N-lag(N))/(day_n-lag(day_n))*1/N ) #"lead" lines up the result
-            #mutate(Ndiff = (N/lag(N))/(day_n/lag(day_n)) ) #"lead" lines up the result 
- 
-  da1$Ndiff[is.infinite(da1$Ndiff)] = NA
-
-  dia_tmp = dia_tmp %>% left_join(da1)
-
-
-  #Add the rate of algal consumption, Adiff
-  daph_tmp = daph_tmp %>%    
-            arrange(replicate_number) %>%
-            mutate(Adiff = algae_start-algae_abundance)  #"lead" lines up the result 
-            #mutate(Adiff = exp(N*0.01)+algae_abundance )  #"lead" lines up the result 
-  daph_tmp$Adiff[is.infinite(daph_tmp$Adiff)] = NA
-
-  dia_tmp = dia_tmp %>%    
-            arrange(replicate_number) %>%
-            mutate(Adiff = algae_start-algae_abundance)#"lead" lines up the result 
-  dia_tmp$Adiff[is.infinite(dia_tmp$Adiff)] = NA
-
-  #=============================================================================
-  #Interspecific competition
-  daph_inv_tmp = subset(mesos_inv_daph, temperature == temps[t])
-  dia_inv_tmp = subset(mesos_inv_dia, temperature == temps[t])
-
-  #Creates specific columns designating invader and resident: 
-  dp2i = subset(daph_inv_tmp, species == "daphnia")
-  dp2r = subset(daph_inv_tmp, species == "diaphanosoma")
-  colnames(dp2i)[colnames(dp2i)=="N"] = "N_inv"
-  colnames(dp2r)[colnames(dp2r)=="N"] = "N_res"
-  daph_inv_tmp = dp2i %>% 
-    left_join(dp2r[,c("day_n","mesocosm_id","N_res")], by=c("day_n","mesocosm_id"))
-  rm(dp2i,dp2r)
-
-  #Add the rate of population growth, Ndiff
-  dp1 = subset(daph_inv_tmp,!is.na(daph_inv_tmp$N_inv) ) %>%    
-            arrange(replicate_number) %>%
-            mutate(Ndiff = (N_inv-lag(N_inv))/(day_n-lag(day_n))*1/N_inv) #"lead" lines up the result 
-            #mutate(Ndiff = (N/lag(N))/(day_n/lag(day_n)) ) #"lead" lines up the result 
-
-  dp1$Ndiff[is.infinite(dp1$Ndiff)] = NA
-  daph_inv_tmp = daph_inv_tmp %>% left_join(dp1)
-  rm(dp1)
-
-  #Creates specific columns designating invader and resident: 
-  dp2i = subset(dia_inv_tmp, species == "daphnia")
-  dp2r = subset(dia_inv_tmp, species == "diaphanosoma")
-  colnames(dp2i)[colnames(dp2i)=="N"] = "N_res"
-  colnames(dp2r)[colnames(dp2r)=="N"] = "N_inv"
-  dia_inv_tmp = dp2r %>% 
-    left_join(dp2i[,c("day_n","mesocosm_id","N_res")], by=c("day_n","mesocosm_id"))
-  rm(dp2i,dp2r)
-
-  #Add the rate of population growth, Ndiff
-  da1 = subset(dia_inv_tmp,!is.na(dia_inv_tmp$N_inv) ) %>%    
-            arrange(replicate_number) %>%
-            mutate(Ndiff = (N_inv-lag(N_inv))/(day_n-lag(day_n))*1/N_inv ) #"lead" lines up the result 
-            #mutate(Ndiff = (N/lag(N))/(day_n/lag(day_n)) ) #"lead" lines up the result 
-  da1$Ndiff[is.infinite(da1$Ndiff)] = NA
-  dia_inv_tmp = dia_inv_tmp %>% left_join(da1)
-  rm(da1)
 
   print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
   print(mean(as.data.frame(subset(dia_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
@@ -307,7 +297,7 @@ for(t in 1:ntemps) {
 
   #=============================================================================
   #Get the intrinsic growth rate of each species
-  # cR = formula (N ~  I(a1*exp(c1*day_n ) ) )
+  # 1
 
   # c1 = lm(I(log(N+1))~I(day_n ), data = daph_tmp ) 
   # tryCatch({ 

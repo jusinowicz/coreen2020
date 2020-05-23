@@ -120,39 +120,115 @@ nmesos =  length(mesos)
 rspecies = unique(m1_data_long$species)
 invader = unique(m1_data_long$invade_monoculture)
 invasions_per = length(mesos)/4 #Treatment entries correponding to each spp 
-
-#=============================================================================
-#Make the single species data set by isolating mesocosms and portions of time
-#series where only a single species is present. Use both the monoculture data 
-#and the data for the resident pre-invasion for  resource consumption fits, 
-#intraspecific competition, intrinsic growth
-#=============================================================================
-mesos1 = subset(m1_data_long,species == "daphnia" & invade_monoculture == "monoculture" )
-mesos2 = subset(m1_data_long,species == "daphnia" & invade_monoculture == "dia invade" )
-mesos2 = mesos2[ mesos2$day_n<=inv_day, ]
-mesos_daph = rbind(mesos1,mesos2)
-
-mesos1 = subset(m1_data_long,species == "diaphanosoma" & invade_monoculture == "monoculture" )
-mesos2 = subset(m1_data_long,species == "diaphanosoma" & invade_monoculture == "daph invade" )
-mesos2 = mesos2[ mesos2$day_n<=inv_day, ]
-mesos_dia = rbind(mesos1,mesos2)
-rm(mesos1,mesos2)
-
-#Make the invasion data sets by isolating portions of time series where a species
-#invades. 
-mesos_inv2 = subset(m1_data_long, invade_monoculture == "daph invade" )
-mesos_inv2 = mesos_inv2[ mesos_inv2$day_n>=inv_day & mesos_inv2$day_n <= inv_end , ]
-mesos_inv_daph = mesos_inv2 
-
-mesos_inv2 = subset(m1_data_long,invade_monoculture == "dia invade" )
-mesos_inv2 = mesos_inv2[ mesos_inv2$day_n>=inv_day & mesos_inv2$day_n <= inv_end , ]
-mesos_inv_dia= mesos_inv2 
-rm(mesos_inv2)
-
 #=============================================================================
 #STAGE 2: Fit resource consumption rates, intrinsic growth rates, and 
 #phenomenological competition coefficients from time series of the data.
+# Choose which model to fit for each of the different fits by uncommenting from
+# the list below.
+# Current favorite is starred. 
 #=============================================================================
+# Resource consumption models
+#=============================================================================
+algae_start = 1E7 #This was the target value of algal cells
+#1. Type 2 (saturating) response
+#alg2 = formula (Adiff ~  a1/(1+b1*exp(c1*N) ) ); a1 = algae_start
+
+#2. Decaying logistic/exponential response
+#alg2 = formula (algae_abundance/algae_start ~  1/(1+b1*exp(c1*N) ) )
+
+#3. *** Decaying exponential response ***
+alg2 = formula (algae_abundance/algae_start~  exp(c1*N+b1) )
+
+#3b. Alternative decaying exponential 
+#alg2 = formula (Adiff ~  exp(c1*N+b1) )
+
+#=============================================================================
+# Intrinsic growth rate rate models -- as a function of algal consumption 
+#=============================================================================
+#1. Exponential as a function of Adiff
+#cR = formula (N~exp(c1*Adiff+b1) )
+
+#2. Exponential, after accountinf for species-specific consumption rate:
+#	For this one, p1 is a constant that must be set as 
+#	 p1 = abs(coef(cl_daph[[w]])[1]) or  p1 = abs(coef(cl_dia[[w]])[1])
+#cR = formula (N~exp(c1*p1*Adiff+b1) )
+
+#3. *** Exponential as a function of algal abundance. ***
+cR = formula ( N ~  exp(c1*algae_abundance+b1)  )
+
+#=============================================================================
+# Intrinsic growth rate rate models -- as a function of time
+# These are used for a cleaner fit of competition coefficients. 
+#=============================================================================
+#1. Exponential over initial growth phase. This requires a short time window, 
+#   i.e. use inv_end to remove equilibrium densities.
+# igr = formula (N ~  a1*exp(c1*day_n ) )
+
+#2. *** Saturating logistic function. ***    
+#   Note: a1 (the carrying capacity) could be set as a constant instead of 
+#   being fit if there are convergence issues. 
+igr = formula (N ~  a1/(1+b1*exp(c1*day_n ) ) )
+
+#3. and 4., The interspecific invasion complements to 1. and 2.: 
+#3. 
+#igrij = formula (N_inv ~  (b1*exp(c1*day_n ) ) )
+
+#4. ***    ***
+igrij = formula (N_inv ~  a1/(1+b1*exp(c1*day_n ) ) )
+
+#=============================================================================
+# Competition models
+# These fall into two approaches. The first is used in combo with the fitted
+# IGR models above, in which case they are just linear models. 
+# The second ignores the IGR models and fits directly from the data. 
+# While the second is more conceptually ideal, it seems to fail mostly with 
+# these data. 
+#=============================================================================
+#=============================================================================
+# First approach, in combo with IGR models
+#=============================================================================
+# Intraspecific competition models
+f_lvii = Ndiff ~ N
+# Interspecific competition models
+f_lvij = Ndiff ~ N
+
+#=============================================================================
+#Second approach
+#With all of these models, ri may be considered as fixed or as a free
+#parameter. 
+#For interspecific, the intraspecific competition coefficient can be included
+#in the model. In this case, it works best to treat it as a fixed parameter
+#and set it equal to the fit obtained from the intraspecific step. 
+#=============================================================================
+####################################
+#Intraspecific competition models
+
+#1. Log transformed, Lotka Volterra 
+#f_lvii = formula ( I(log(Ndiff)) ~  ri*(ki-aii*N) )
+
+#2. Untransformed Lotka Volterra 
+#f_lvii = formula ( Ndiff ~  ri*(1-aii*N) )
+
+#3. *** Leslie-Gower ***
+#f_lvii = formula ( Ndiff ~  ri/(1+aii*N) )
+
+####################################
+#Interspecific competition models
+
+#1. Lotka Volterra, aij only 
+#f_lvij = formula ( Ndiff ~  ri*(1-aij*N_res) )
+
+#2. Leslie Gower, aij only. 
+#f_lvij = formula ( Ndiff ~  ri/(1+aij*N_res) )
+
+#3. LV, aii and aij
+#f_lvij = formula ( Ndiff ~  ri/(1+aii*N_inv+aij*N_res) )
+
+#4. LG, aii and aij
+#f_lvij = formula ( Ndiff ~  ri*(1-aii*N_inv-aij*N_res) )
+
+#=============================================================================
+#Variables:
 
 #Fit the resource consumption model per temperature. 
 cl_daph = vector("list", 6); cl_daph_plot = NULL; cl_daph_pred = NULL
@@ -174,17 +250,42 @@ lvij_daph_pred = NULL;
 igrij_dia = vector("list", 6); lvij_dia = vector("list", 6); igrij_dia_pred = NULL;
 lvij_dia_pred = NULL;
 
-
-
 #par(mfrow=c(6,1),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
-
-algae_start = 1E7 #This was the target value
-#For comparison with target value: on average, it's pretty damn close (9.8E6 vs 10E6)
-#algae_start = mean(m1_data_long$algae_cells_mL*m1_data_long$algae_mL_media,na.rm=T)
 
 maxN = 500 #max(m1_data_long$N,na.rm=T)
 maxT = max(m1_data_long$day_n,na.rm=T)
 
 for(t in 1:ntemps) { 
+  #=============================================================================
+  #Resource consumption and intraspecific competition
+  #=============================================================================
+  #Make the single species data set by isolating mesocosms and portions of time
+  #series where only a single species is present. Use both the monoculture data 
+  #and the data for the resident pre-invasion for resource consumption fits, 
+  #intraspecific competition, intrinsic growth
+  #
+  #Get the data for each temperature. 
+  #=============================================================================
+  daph_tmp = get_new_mono(m1_data_long, rspecies[1], temps[t], inv_day )
+  dia_tmp = get_new_mono(m1_data_long, rspecies[2], temps[t], inv_day )
+
+  
+
+
+
+  #Make the invasion data sets by isolating portions of time series where a species
+  #invades. 
+  daph_inv_tmp = get_new_inv(m1_data_long, rspecies[1], temps[t], inv_day, inv_end )
+  dia_inv_tmp = get_new_inv(m1_data_long, rspecies[2], temps[t], inv_day, inv_end )
+
+  #Output
+  print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
+  print(mean(as.data.frame(subset(dia_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
+  
+  #Keep building these for plotting: 
+  cl_daph_plot = rbind( cl_daph_plot, daph_tmp )
+  cl_dia_plot = rbind( cl_dia_plot, dia_tmp )
+
+
 
 }
