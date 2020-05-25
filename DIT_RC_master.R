@@ -84,8 +84,6 @@ m1_data_long %>%
   ylab("population size")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 
-
-
 #=============================================================================
 #Replace missing measurements of algal abundance. This uses s GAMM to 
 #predict on the basis of density per-species, as a funciton of temperature, 
@@ -95,6 +93,7 @@ m1_data_long %>%
 #=============================================================================
 m1_data_long$algae_abundance[is.na(m1_data_long$algae_abundance)] = 
 	alg_replace(m1_data_long)$algae_abundance 
+
 #=============================================================================
 #Plot the data
 #=============================================================================
@@ -137,7 +136,7 @@ algae_start = 1E7 #This was the target value of algal cells
 #alg2 = formula (algae_abundance/algae_start ~  1/(1+b1*exp(c1*N) ) )
 
 #3. *** Decaying exponential response ***
-alg2 = formula (algae_abundance/algae_start~  exp(c1*N+b1) )
+alg2 = formula (algae_abundance/algae_start ~ exp(c1*N+b1) )
 alg2_prms= c("c1","b1" )
 alg_lm=formula(I(log(algae_abundance/algae_start ))~N )
 
@@ -180,7 +179,9 @@ igr_prms = c("a1","b1","c1")
 
 #4. ***    ***
 igrij = formula (N_inv ~  a1/(1+b1*exp(c1*day_n ) ) )
-igrij_prms = c("a1","b1","c1")
+#igrij_prms = c("a1","b1","c1")
+igrij_prms = c("b1","c1") #Treat a1 as fixed 
+
 
 #=============================================================================
 # Competition models
@@ -258,9 +259,6 @@ lvij_dia_pred = NULL;
 
 #par(mfrow=c(6,1),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
 
-maxN = 500 #max(m1_data_long$N,na.rm=T)
-maxT = max(m1_data_long$day_n,na.rm=T)
-
 for(t in 1:ntemps) { 
 	#=============================================================================
 	#Resource consumption and intraspecific competition
@@ -269,9 +267,8 @@ for(t in 1:ntemps) {
 	#series where only a single species is present. Use both the monoculture data 
 	#and the data for the resident pre-invasion for resource consumption fits, 
 	#intraspecific competition, intrinsic growth
-	#
-	#Get the data for each temperature. 
 	#=============================================================================
+	#Get the data for each temperature. 
 	daph_tmp = get_new_mono(m1_data_long, rspecies[1], temps[t], inv_day )
 	dia_tmp = get_new_mono(m1_data_long, rspecies[2], temps[t], inv_day )
 
@@ -280,39 +277,45 @@ for(t in 1:ntemps) {
 	m1 = lm(alg_lm, daph_tmp) #Use for starting values for NLS in prm_start
 	cl_daph[[t]] = get_mod_fit( mod_data =daph_tmp, mod_fit = alg2, mod_prms = alg2_prms,
 					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
-					mod_y = "N", lm_mod = alg_lm  ) 
+					mod_x = "N", lm_mod = alg_lm  ) 
+	if(!is.null(cl_daph[[t]])) { 
 	daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], 
 					N=cl_daph[[t]]$new_fit$N, N_pred = cl_daph[[t]]$new_fit$N_pred )
     cl_daph_pred = rbind(cl_daph_pred, daph_pred_tmp)
-	  
+	}
+
 	m1 = lm(alg_lm, dia_tmp)
 	cl_dia[[t]] = get_mod_fit( mod_data =dia_tmp, mod_fit = alg2, mod_prms = alg2_prms,
 					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
-					mod_y = "N", lm_mod = alg_lm  ) 
+					mod_x = "N", lm_mod = alg_lm  ) 
+	if(!is.null(cl_dia[[t]])) { 
 	dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], 
 					N=cl_dia[[t]]$new_fit$N, N_pred = cl_dia[[t]]$new_fit$N_pred )	 
     cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
-
+	}
 
 	#Intrinsic growth f(algae)
 	m1 = lm(cR_lm, daph_tmp)
 	cR_daph[[t]] =get_mod_fit( mod_data =daph_tmp, mod_fit = cR, mod_prms = cR_prms,
 					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
-					mod_y = "algae_abundance", lm_mod = cR_lm  ) 
+					mod_x = "algae_abundance", lm_mod = cR_lm  ) 
+	if(!is.null(cR_daph[[t]])) { 
 	daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], 
 					algae_abundance=cR_daph[[t]]$new_fit$algae_abundance, 
 					N_pred = cR_daph[[t]]$new_fit$N_pred )
 	cR_daph_pred = rbind(cR_daph_pred, daph_pred_tmp)
-
+	}
+	
 	m1 = lm(cR_lm, dia_tmp)
 	cR_dia[[t]] = get_mod_fit( mod_data =dia_tmp, mod_fit = cR, mod_prms = cR_prms,
 					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
-					mod_y = "algae_abundance", lm_mod = cR_lm  ) 	
+					mod_x = "algae_abundance", lm_mod = cR_lm  )
+	if(!is.null(cR_dia[[t]])) { 
 	dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], 
 					algae_abundance=cR_dia[[t]]$new_fit$algae_abundance, 
 					N_pred = cR_dia[[t]]$new_fit$N_pred )
 	cR_dia_pred = rbind(cR_dia_pred, dia_pred_tmp)
-
+	}
 
 	#Intrinsic growth rate f(time)
 	#Adjust the days to make both data sets line up
@@ -323,29 +326,71 @@ for(t in 1:ntemps) {
   	dia_tmpb$day_n[dia_tmpb$day_n>inv_day] = dia_tmpb$day_n[dia_tmpb$day_n>inv_day]-inv_day 
 
 	igr_daph[[t]] = get_mod_fit( mod_data =daph_tmpb, mod_fit = igr, mod_prms = igr_prms,
-					prm_start = c(max(daph_tmpb$N), 1, 0.5 ), mod_y = "N") 
+					prm_start = c(max(daph_tmpb$N,na.rm=T), 1, 0.05 ), mod_x = "day_n")
+ 	if(!is.null(igr_daph[[t]])) { 
+	igr_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
+		 			day_n=igr_daph[[t]]$new_fit$day_n,  
+		 			N = igr_daph[[t]]$new_fit$N_pred )
+    igr_daph_pred = rbind(igr_daph_pred, igr_daph_tmp)
+	}
 	
 	igr_dia[[t]] = get_mod_fit( mod_data =dia_tmpb, mod_fit = igr, mod_prms = igr_prms,
-					prm_start = c(max(dia_tmpb$N), 1, 0.5 ), mod_y = "N")
+					prm_start = c(max(dia_tmpb$N,na.rm=T), 1, 0.05 ), mod_x = "day_n")
+	if(!is.null(igr_dia[[t]])) { 
+	igr_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
+		 			day_n=igr_dia[[t]]$new_fit$day_n,  
+		 			N = igr_dia[[t]]$new_fit$N_pred )
+    igr_dia_pred = rbind(igr_dia_pred, igr_dia_tmp)
+	}
+	
+	#Intraspecific competition, when fitting to the above model fits igr_specis 
+	#instead of directly to the data. 
+	#Add Ndiff
+	igr_daph_tmp$Ndiff = (igr_daph_tmp$N-lag(igr_daph_tmp$N))/
+                        (igr_daph_tmp$day_n-lag(igr_daph_tmp$day_n))*1/igr_daph_tmp$N
+	igr_dia_tmp$Ndiff = (igr_dia_tmp$N-lag(igr_dia_tmp$N))/
+                        (igr_dia_tmp$day_n-lag(igr_dia_tmp$day_n))*1/igr_dia_tmp$N
+	lvii_daph[[t]] = lm(f_lvii, igr_daph_tmp )
+	lvii_dia[[t]] = lm(f_lvii,igr_dia_tmp )
 
-	#Intraspecific competition
-	lvii_daph[[t]] = lm(f_lvii, )
-	lvii_dia[[t]] = 
-
-igr_dia_tmp$N = igr_dia_tmp$N_pred
-  igr_dia_tmp$Ndiff = (igr_dia_tmp$N_pred-lag(igr_dia_tmp$N_pred))/
-                        (igr_dia_tmp$s-lag(igr_dia_tmp$s))*1/igr_dia_tmp$N_pred
-
-  #The fitted data should be straightforward: 
-  lvii_dia[[t]] = lm(data=igr_dia_tmp, Ndiff ~ N)
-  s=seq(1,max(dia_tmp$N),1 )
-  d_tmp = predict(lvii_dia[[t]], list( N = s ) )
-
-
+	#=============================================================================
+	#Interspecific competition
+	#=============================================================================
 	#Make the invasion data sets by isolating portions of time series where a species
 	#invades. 
 	daph_inv_tmp = get_new_inv(m1_data_long, rspecies[1], temps[t], inv_day, inv_end )
 	dia_inv_tmp = get_new_inv(m1_data_long, rspecies[2], temps[t], inv_day, inv_end )
+
+	igrij_daph[[t]] = get_mod_fit( mod_data =daph_inv_tmp, mod_fit = igrij, mod_prms = igrij_prms,
+					prm_start = c( 2, -0.05 ), mod_x = "day_n", 
+					fixed = data.frame(a1=max(daph_inv_tmp$N_inv,na.rm=T)) ) 
+	if(!is.null(igrij_daph[[t]])) { 
+	igrij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
+		 			day_n=igrij_daph[[t]]$new_fit$day_n,  
+		 			N= igrij_daph[[t]]$new_fit$N_pred )
+    igrij_daph_pred = rbind(igrij_daph_pred, igrij_daph_tmp)
+	}
+	
+	igrij_dia[[t]] = get_mod_fit( mod_data =dia_inv_tmp, mod_fit = igrij, mod_prms = igrij_prms,
+					prm_start = c( 2, -0.05 ), mod_x = "day_n",
+					fixed = data.frame(a1 = max(dia_inv_tmp$N_inv,na.rm=T)) )
+	if(!is.null(igrij_dia[[t]])) { 
+	igrij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
+		 			day_n=igrij_dia[[t]]$new_fit$day_n,  
+		 			N= igrij_dia[[t]]$new_fit$N_pred )
+    igrij_dia_pred = rbind(igrij_dia_pred, igrij_dia_tmp)
+	}
+
+	#Interspecific competition, when fitting to the above model fits igrij_specis 
+	#instead of directly to the data. 
+	#Add Ndiff
+	igrij_daph_tmp$Ndiff = (igrij_daph_tmp$N-lag(igrij_daph_tmp$N))/
+                        (igrij_daph_tmp$day_n-lag(igrij_daph_tmp$day_n))*1/igrij_daph_tmp$N
+	igrij_dia_tmp$Ndiff = (igrij_dia_tmp$N-lag(igrij_dia_tmp$N))/
+                        (igrij_dia_tmp$day_n-lag(igrij_dia_tmp$day_n))*1/igrij_dia_tmp$N
+	lvij_daph[[t]] = lm(f_lvij, igrij_daph_tmp )
+	lvij_dia[[t]] = lm(f_lvij,igrij_dia_tmp )
+
 
 	#Output
 	print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
@@ -356,5 +401,155 @@ igr_dia_tmp$N = igr_dia_tmp$N_pred
 	cl_dia_plot = rbind( cl_dia_plot, dia_tmp )
 
 
-
 }
+
+#Consumption functions
+cl_plot = rbind(cl_daph_plot,cl_dia_plot)
+cl_pred = rbind(cl_daph_pred,cl_dia_pred)
+
+#Growth rate functions
+cR_pred = rbind(cR_daph_pred,cR_dia_pred)
+
+#competition
+lvii_pred = rbind(lvii_daph_pred, lvii_dia_pred)
+lvij_pred = rbind(lvij_daph_pred, lvij_dia_pred)
+
+#=============================================================================
+#Plotting for Stage 2: 
+#=============================================================================
+#Consumption functions: 
+#Separate panels
+#Pick the appropriate first line: 
+#ggplot(cl_plot, aes(x = N, y =algae_abundance, color = species) )+  #2
+ggplot(cl_plot, aes(x = N, y =algae_abundance/algae_start, color = species) )+ #3
+#ggplot(cl_plot, aes(x = N, y =Adiff, color = species) )+ #3
+  geom_point( )+ facet_grid(temperature~species)+ 
+  geom_line(data= cl_pred, mapping= aes(x = N, y =N_pred, color=species) ) + 
+  facet_grid(temperature~species)+
+  xlab("Zooplankton abundance ")+
+  ylab("Algal consumption rate")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+#ggsave("./algal_consump3_diaDaph.pdf", width = 8, height = 10)
+
+#=============================================================================
+#Intrinsic growth rate functions: 
+#Separate panels
+#Pick the appropriate first line: 
+#ggplot(cl_plot, aes(x = day_n, y =N, color = species) ) + #1. 
+#ggplot(cl_plot, aes(x = Adiff, y =N, color = species) ) + #2. 
+ggplot(cl_plot, aes(x = algae_abundance, y =N, color = species) ) + #2. 
+  geom_point( )+ facet_grid(temperature~species)+ 
+  geom_line(data= cR_pred, mapping= aes(x = algae_abundance, y =N_pred, color=species) )+
+  facet_grid(temperature~species)+ #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
+  xlab("Zooplankton abundance ")+
+  ylab("Time")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+#ggsave("./intrinsicR_diaDaph2.pdf", width = 8, height = 10)
+
+#=============================================================================
+#Competition models 
+#Separate panels
+#Pick the appropriate first line: 
+#ggplot(cl_plot, aes(x = day_n, y =N, color = species) ) + #1. 
+#ggplot(cl_plot, aes(x = Adiff, y =N, color = species) ) + #2. 
+ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2. 
+  geom_point( )+ facet_grid(temperature~species) + 
+  geom_line(data= lvii_pred, mapping= aes(x = N, y =Ndiff, color=species) )+
+  facet_grid(temperature~species)+ #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
+  xlab("Zooplankton abundance ")+
+  ylab("Growth rate")+  xlim(0,60)+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+#ggsave("./intrinsicR_diaDaph2.pdf", width = 8, height = 10)
+
+ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2. 
+  geom_point( )+ facet_grid(temperature~species) + 
+  geom_line(data= lvij_pred, mapping= aes(x = s, y =N_pred, color=species) )+
+  facet_grid(temperature~species)+ #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
+  xlab("Zooplankton abundance ")+
+  ylab("Growth rate")+  xlim(0,60)+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+
+#=============================================================================
+#STAGE 3: Theoretical simulations of population dynamics. 
+# Generate population data using a theoretical Resource-Consumer (RC) model. 
+# Check the file [[]] for different modeling approaches. 
+#
+# The current favorite approach is to use the basic MacArthur RC model with 
+# parameters fitted from STAGE 2 at each temperature level. Since the
+# experiment uses only one resource -- algae -- but still allows coexistence, 
+# a fictitious 2nd resource is modeled which is more heavily consumed by 
+# Diaphanosoma. The goal is to make the consumption rates of both resources 
+# to match up with the phenomenological competition coefficients, especially 
+# where coexistence is possible at temps[[5]].  
+#=============================================================================
+#=============================================================================
+#Set parameters for simulation
+#=============================================================================
+#Length and time steps of each model run
+tend = 100
+delta1 = 0.01
+tl=tend/delta1+1
+
+###The maximum block depth for dynamic info metrics (larger is more accurate, but
+#slower and could cause crashing if too large)
+k= 2
+
+###Build a series of scenarios going from simple to more complex dynamics
+#Number of food webs to generate
+nwebs = length(temps)
+
+###Output of each web
+out1 = vector("list",nwebs)
+#Invasion scenario
+out_inv1 = vector("list",nwebs)
+
+###Species numbers
+#Assume 2 trophic levels unless otherwise specified.
+nRsp = 2 #Algae
+nCsp = 2 #Spp 1 is Daphnia, Spp 2 is Diaphanosoma
+nPsp = 1 #This is actually 0 --> Just a dummy predator
+nspp = nRsp+nCsp+nPsp
+
+#=============================================================================
+# Outer loop. First run to equilibrate the population dynamics
+#=============================================================================
+par(mfrow=c(6,1),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
+
+
+
+
+aii_all = matrix(0,6,2)
+aij_all = matrix(0,6,2)
+ci_all = matrix(0,6,2)
+wi_all = matrix(0,6,2)
+
+for(n in 1:6){ 
+  aii_all[n,1] = abs(coef(lvii_daph[[n]])[2])
+  aii_all[n,2] = abs(coef(lvii_dia[[n]])[2])
+  aij_all[n,1] = abs(coef(lvij_daph[[n]])[2])
+  aij_all[n,2] = abs(coef(lvij_dia[[n]])[2])
+  ci_all[n,1] = abs(coef(cl_daph[[n]])[1])
+  ci_all[n,2] = abs(coef(cl_dia[[n]])[1])
+  wi_all[n,1] = abs(coef(cR_daph[[n]])[1])
+  wi_all[n,2] = abs(coef(cR_dia[[n]])[1])
+}
+
+aiib_all = ci_all^2*wi_all
+aijb_all = ci_all*ci_all[,2:1]*wi_all
+
+rho1 = matrix(0,6,2)
+rho1b = matrix(0,6,2)
+the1 = matrix(0,6,2)
+the1b = matrix(0,6,2)
+
+rho1[,1] = aij_all[,1]/(sqrt(aii_all[,1]*aii_all[,2]) )
+rho1[,2] = aij_all[,2]/(sqrt(aii_all[,1]*aii_all[,2]))
+rho1b[,1] = aijb_all[,1]/(sqrt(aiib_all[,1]*aiib_all[,2]))
+rho1b[,2] = aijb_all[,2]/(sqrt(aiib_all[,1]*aiib_all[,2]))
+
+the1[,1] = sqrt(aii_all[,1]/aii_all[,2])
+the1[,2] = sqrt(aii_all[,2]/aii_all[,1])
+the1b[,1] = sqrt(aiib_all[,1]/aiib_all[,2])
+the1b[,2] = sqrt(aiib_all[,2]/aiib_all[,1])
+
+
