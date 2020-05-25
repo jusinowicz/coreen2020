@@ -114,6 +114,109 @@ get_new_inv = function (m1_data_long, species1, temperature,inv_day,inv_end ) {
 
 }
 
+#=============================================================================
+#Function fitting
+#=============================================================================
+
+
+get_mod_fit = function ( mod_data, mod_fit, mod_prms, prm_start, mod_y, lm_mod = NULL) {
+
+  mpl = length ( mod_prms)
+  start1 = vector("list",mpl)
+
+  #Make the list of initial model values. 
+  for ( n in 1:mpl ){ 
+    start1[[n]] = prm_start[n]
+    names(start1)[n] = mod_prms[n]
+  }
+
+  #Fit the model with NLS
+  tryCatch({ 
+    fit_mod = nls( formula= mod_fit, data = mod_data, 
+    start=start1, control=nls.control(maxiter = 1000), trace=F ) 
+  }, error = function(e) {} ) 
+
+  #Fitting data:
+  #Sequence of data to predict over
+  y_tmp =seq(min(mod_data[[paste(mod_y)]],na.rm=T),
+    max(mod_data[[paste(mod_y)]],na.rm=T),1 )
+
+  fit_dat = list(y_tmp)
+  names(fit_dat)[1] = mod_y
+  #See whether the NLS fit failed. If lm_mod has been provided then attempt 
+  #a linear model fit. Otherwise, do not try to fit the data and return with
+  #nothing. 
+
+  if(is.null(fit_mod) ){ 
+    if( !is.null(lm_mod) ) {
+      fit_mod = lm(lm_mod, data= mod_data )
+      #Predicted values: 
+      new_fit = predict(fit_mod, fit_dat )
+    } else { 
+      #Fail
+      return(fit_mod)
+    }
+
+  }else{  
+    #Predicted values: 
+    new_fit = predict(fit_mod, fit_dat )
+    fit_mod = list(fit_mod = fit_mod, new_fit=new_fit)
+    return(fit_mod)
+  }
+ 
+ 
+
+}
+
+m1 = lm(I(log(algae_abundance/algae_start ))~I(N), data = daph_tmp ) 
+  tryCatch({ 
+    cl_daph[[t]] = nls( formula= alg2, data = daph_tmp, 
+    start=list(c1=(as.numeric(coef(m1)[2])),a1=(as.numeric(coef(m1)[1] ) )   ),
+    control=nls.control(maxiter = 1000), trace=F ) 
+
+    #Predicted values: 
+    #s=seq(min(daph_tmp$N),max(daph_tmp$N),1 )
+    s=seq(0,maxN,1 )
+    d_tmp = predict(cl_daph[[t]], list( N = s ) )
+    daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+    cl_daph_pred = rbind(cl_daph_pred, daph_pred_tmp)
+  }, error = function(e) {} ) 
+
+
+  c1 = lm(I(log(N+1))~I(algae_abundance), data = daph_tmp ) 
+  tryCatch({ 
+    cR_daph[[t]] = nls( formula= cR, data = daph_tmp, 
+    start=list(c1=(as.numeric(coef(c1)[2])), a1=(as.numeric(coef(c1)[1] ) ) ),
+    control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+  }, error = function(e) {} ) 
+    #Predicted values: 
+    s=seq(min(daph_tmp$algae_abundance),max(daph_tmp$algae_abundance),1 )
+    #s=seq(0,maxT,1 )
+
+    if( is.null(cR_daph[[t]]) ) {
+        cR_daph[[t]] = c1
+        d_tmp = exp(predict(cR_daph[[t]], list( algae_abundance= s ) ) )
+    }else {
+        d_tmp = predict(cR_daph[[t]], list( algae_abundance= s ) )
+    }
+
+    daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+    cR_daph_pred = rbind(cR_daph_pred, daph_pred_tmp)
+ 
+tryCatch({ 
+    igr_daph[[t]] = nls( formula= igr, data = daph_tmpb, 
+    #start=list(c1=(as.numeric(coef(igr1)[2])), a1=exp(as.numeric(coef(igr1)[1] ) ) ),
+    start=list(c1=.05, a1=max(daph_tmpb$N),b1=1 ),
+    control=nls.control(maxiter = 1000), algorithm="port", trace=F ) 
+
+    #Predicted values: 
+    s=seq(min(daph_tmp$day_n),max(daph_tmp$day_n),1 )
+    #s=seq(0,maxT,1 )
+    d_tmp = predict(igr_daph[[t]], list( day_n = s ) )
+    igr_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t], s=s, N_pred = d_tmp )
+    igr_daph_pred = rbind(igr_daph_pred, igr_daph_tmp)
+  }, error = function(e) {} ) 
+
 
 #################
 #There are two different approaches to fitting this. For now, just 

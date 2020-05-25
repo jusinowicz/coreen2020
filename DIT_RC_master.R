@@ -138,6 +138,8 @@ algae_start = 1E7 #This was the target value of algal cells
 
 #3. *** Decaying exponential response ***
 alg2 = formula (algae_abundance/algae_start~  exp(c1*N+b1) )
+alg2_prms= c("c1","b1" )
+alg_lm=formula(I(log(algae_abundance/algae_start ))~N )
 
 #3b. Alternative decaying exponential 
 #alg2 = formula (Adiff ~  exp(c1*N+b1) )
@@ -155,6 +157,8 @@ alg2 = formula (algae_abundance/algae_start~  exp(c1*N+b1) )
 
 #3. *** Exponential as a function of algal abundance. ***
 cR = formula ( N ~  exp(c1*algae_abundance+b1)  )
+cR_prms= c("c1","b1" )
+cR_lm=formula(I(log(N+1))~algae_abundance)
 
 #=============================================================================
 # Intrinsic growth rate rate models -- as a function of time
@@ -168,6 +172,7 @@ cR = formula ( N ~  exp(c1*algae_abundance+b1)  )
 #   Note: a1 (the carrying capacity) could be set as a constant instead of 
 #   being fit if there are convergence issues. 
 igr = formula (N ~  a1/(1+b1*exp(c1*day_n ) ) )
+igr_prms = c("a1","b1","c1")
 
 #3. and 4., The interspecific invasion complements to 1. and 2.: 
 #3. 
@@ -175,6 +180,7 @@ igr = formula (N ~  a1/(1+b1*exp(c1*day_n ) ) )
 
 #4. ***    ***
 igrij = formula (N_inv ~  a1/(1+b1*exp(c1*day_n ) ) )
+igrij_prms = c("a1","b1","c1")
 
 #=============================================================================
 # Competition models
@@ -256,35 +262,82 @@ maxN = 500 #max(m1_data_long$N,na.rm=T)
 maxT = max(m1_data_long$day_n,na.rm=T)
 
 for(t in 1:ntemps) { 
-  #=============================================================================
-  #Resource consumption and intraspecific competition
-  #=============================================================================
-  #Make the single species data set by isolating mesocosms and portions of time
-  #series where only a single species is present. Use both the monoculture data 
-  #and the data for the resident pre-invasion for resource consumption fits, 
-  #intraspecific competition, intrinsic growth
-  #
-  #Get the data for each temperature. 
-  #=============================================================================
-  daph_tmp = get_new_mono(m1_data_long, rspecies[1], temps[t], inv_day )
-  dia_tmp = get_new_mono(m1_data_long, rspecies[2], temps[t], inv_day )
-
-  
+	#=============================================================================
+	#Resource consumption and intraspecific competition
+	#=============================================================================
+	#Make the single species data set by isolating mesocosms and portions of time
+	#series where only a single species is present. Use both the monoculture data 
+	#and the data for the resident pre-invasion for resource consumption fits, 
+	#intraspecific competition, intrinsic growth
+	#
+	#Get the data for each temperature. 
+	#=============================================================================
+	daph_tmp = get_new_mono(m1_data_long, rspecies[1], temps[t], inv_day )
+	dia_tmp = get_new_mono(m1_data_long, rspecies[2], temps[t], inv_day )
 
 
+	#Resource consumption rates:
+	m1 = lm(lm_mod, daph_tmp) #Use for starting values for NLS in prm_start
+	cl_daph[[t]] = get_mod_fit( mod_data =daph_tmp, mod_fit = alg2, mod_prms = alg2_prms,
+					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
+					mod_y = "N", lm_mod = alg_lm  ) 	  
+	
+	m1 = lm(lm_mod, dia_tmp)
+	cl_dia[[t]] = get_mod_fit( mod_data =dia_tmp, mod_fit = alg2, mod_prms = alg2_prms,
+					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
+					mod_y = "N", lm_mod = alg_lm  ) 	 
 
-  #Make the invasion data sets by isolating portions of time series where a species
-  #invades. 
-  daph_inv_tmp = get_new_inv(m1_data_long, rspecies[1], temps[t], inv_day, inv_end )
-  dia_inv_tmp = get_new_inv(m1_data_long, rspecies[2], temps[t], inv_day, inv_end )
+	#Intrinsic growth f(algae)
+	m1 = lm(cR_lm daph_tmp)
+	cR_daph[[t]] =get_mod_fit( mod_data =daph_tmp, mod_fit = cR, mod_prms = cR_prms,
+					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
+					mod_y = "algae_abundance", lm_mod = cR_lm  ) 
 
-  #Output
-  print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
-  print(mean(as.data.frame(subset(dia_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
-  
-  #Keep building these for plotting: 
-  cl_daph_plot = rbind( cl_daph_plot, daph_tmp )
-  cl_dia_plot = rbind( cl_dia_plot, dia_tmp )
+	m1 = lm(cR_lm, dia_tmp)
+	cR_dia[[t]] = get_mod_fit( mod_data =dia_tmp, mod_fit = cR, mod_prms = cR_prms,
+					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
+					mod_y = "algae_abundance", lm_mod = cR_lm  ) 	
+
+	#Intrinsic growth rate f(time)
+	#Adjust the days to make both data sets line up
+  	daph_tmpb=daph_tmp
+  	daph_tmpb$day_n[daph_tmpb$day_n>inv_day] = daph_tmpb$day_n[daph_tmpb$day_n>inv_day]-inv_day 
+  	
+  	dia_tmpb=dia_tmp
+  	dia_tmpb$day_n[dia_tmpb$day_n>inv_day] = dia_tmpb$day_n[dia_tmpb$day_n>inv_day]-inv_day 
+
+	igr_daph[[t]] = get_mod_fit( mod_data =daph_tmpb, mod_fit = igr, mod_prms = igr_prms,
+					prm_start = c(max(daph_tmpb$N), 1, 0.5 ), mod_y = "N") 
+	
+	igr_dia[[t]] = get_mod_fit( mod_data =dia_tmpb, mod_fit = igr, mod_prms = igr_prms,
+					prm_start = c(max(dia_tmpb$N), 1, 0.5 ), mod_y = "N")
+
+	#Intraspecific competition
+	lvii_daph[[t]] = lm(f_lvii, )
+	lvii_dia[[t]] = 
+
+igr_dia_tmp$N = igr_dia_tmp$N_pred
+  igr_dia_tmp$Ndiff = (igr_dia_tmp$N_pred-lag(igr_dia_tmp$N_pred))/
+                        (igr_dia_tmp$s-lag(igr_dia_tmp$s))*1/igr_dia_tmp$N_pred
+
+  #The fitted data should be straightforward: 
+  lvii_dia[[t]] = lm(data=igr_dia_tmp, Ndiff ~ N)
+  s=seq(1,max(dia_tmp$N),1 )
+  d_tmp = predict(lvii_dia[[t]], list( N = s ) )
+
+
+	#Make the invasion data sets by isolating portions of time series where a species
+	#invades. 
+	daph_inv_tmp = get_new_inv(m1_data_long, rspecies[1], temps[t], inv_day, inv_end )
+	dia_inv_tmp = get_new_inv(m1_data_long, rspecies[2], temps[t], inv_day, inv_end )
+
+	#Output
+	print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
+	print(mean(as.data.frame(subset(dia_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
+
+	#Keep building these for plotting: 
+	cl_daph_plot = rbind( cl_daph_plot, daph_tmp )
+	cl_dia_plot = rbind( cl_dia_plot, dia_tmp )
 
 
 
