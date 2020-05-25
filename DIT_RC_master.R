@@ -277,26 +277,42 @@ for(t in 1:ntemps) {
 
 
 	#Resource consumption rates:
-	m1 = lm(lm_mod, daph_tmp) #Use for starting values for NLS in prm_start
+	m1 = lm(alg_lm, daph_tmp) #Use for starting values for NLS in prm_start
 	cl_daph[[t]] = get_mod_fit( mod_data =daph_tmp, mod_fit = alg2, mod_prms = alg2_prms,
 					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
-					mod_y = "N", lm_mod = alg_lm  ) 	  
-	
-	m1 = lm(lm_mod, dia_tmp)
+					mod_y = "N", lm_mod = alg_lm  ) 
+	daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], 
+					N=cl_daph[[t]]$new_fit$N, N_pred = cl_daph[[t]]$new_fit$N_pred )
+    cl_daph_pred = rbind(cl_daph_pred, daph_pred_tmp)
+	  
+	m1 = lm(alg_lm, dia_tmp)
 	cl_dia[[t]] = get_mod_fit( mod_data =dia_tmp, mod_fit = alg2, mod_prms = alg2_prms,
 					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
-					mod_y = "N", lm_mod = alg_lm  ) 	 
+					mod_y = "N", lm_mod = alg_lm  ) 
+	dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], 
+					N=cl_dia[[t]]$new_fit$N, N_pred = cl_dia[[t]]$new_fit$N_pred )	 
+    cl_dia_pred = rbind(cl_dia_pred, dia_pred_tmp)
+
 
 	#Intrinsic growth f(algae)
-	m1 = lm(cR_lm daph_tmp)
+	m1 = lm(cR_lm, daph_tmp)
 	cR_daph[[t]] =get_mod_fit( mod_data =daph_tmp, mod_fit = cR, mod_prms = cR_prms,
 					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
 					mod_y = "algae_abundance", lm_mod = cR_lm  ) 
+	daph_pred_tmp = data.frame( species = rspecies[1], temperature = temps[t], 
+					algae_abundance=cR_daph[[t]]$new_fit$algae_abundance, 
+					N_pred = cR_daph[[t]]$new_fit$N_pred )
+	cR_daph_pred = rbind(cR_daph_pred, daph_pred_tmp)
 
 	m1 = lm(cR_lm, dia_tmp)
 	cR_dia[[t]] = get_mod_fit( mod_data =dia_tmp, mod_fit = cR, mod_prms = cR_prms,
 					prm_start = c((as.numeric(coef(m1)[2])), (as.numeric(coef(m1)[1] ) ) ), 
 					mod_y = "algae_abundance", lm_mod = cR_lm  ) 	
+	dia_pred_tmp = data.frame( species = rspecies[2], temperature = temps[t], 
+					algae_abundance=cR_dia[[t]]$new_fit$algae_abundance, 
+					N_pred = cR_dia[[t]]$new_fit$N_pred )
+	cR_dia_pred = rbind(cR_dia_pred, dia_pred_tmp)
+
 
 	#Intrinsic growth rate f(time)
 	#Adjust the days to make both data sets line up

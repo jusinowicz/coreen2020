@@ -11,7 +11,6 @@
 library(tidyverse)
 library(lubridate)
 library(mgcv)
-library(gamm4)
 library(fields)
 source("./info_theory_functions.R")
 #=============================================================================
@@ -131,6 +130,7 @@ get_mod_fit = function ( mod_data, mod_fit, mod_prms, prm_start, mod_y, lm_mod =
   }
 
   #Fit the model with NLS
+  fit_mod = NULL
   tryCatch({ 
     fit_mod = nls( formula= mod_fit, data = mod_data, 
     start=start1, control=nls.control(maxiter = 1000), trace=F ) 
@@ -149,9 +149,14 @@ get_mod_fit = function ( mod_data, mod_fit, mod_prms, prm_start, mod_y, lm_mod =
 
   if(is.null(fit_mod) ){ 
     if( !is.null(lm_mod) ) {
+      #Fit the linear model
       fit_mod = lm(lm_mod, data= mod_data )
       #Predicted values: 
       new_fit = predict(fit_mod, fit_dat )
+      new_fit = data.frame( cbind(fit_dat[[1]],new_fit) )
+      names(new_fit)[1] = paste(mod_y)
+      names(new_fit)[2] = "N_pred"
+      fit_mod = list(fit_mod = fit_mod, new_fit=new_fit)
     } else { 
       #Fail
       return(fit_mod)
@@ -160,12 +165,13 @@ get_mod_fit = function ( mod_data, mod_fit, mod_prms, prm_start, mod_y, lm_mod =
   }else{  
     #Predicted values: 
     new_fit = predict(fit_mod, fit_dat )
+    new_fit = data.frame( cbind(fit_dat[[1]],new_fit) )
+    names(new_fit)[1] = paste(mod_y)
+    names(new_fit)[2] = "N_pred"
     fit_mod = list(fit_mod = fit_mod, new_fit=new_fit)
     return(fit_mod)
   }
  
- 
-
 }
 
 m1 = lm(I(log(algae_abundance/algae_start ))~I(N), data = daph_tmp ) 
