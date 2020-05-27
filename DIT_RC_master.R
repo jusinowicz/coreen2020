@@ -503,6 +503,13 @@ out1 = vector("list",nwebs)
 #Invasion scenario
 out_inv1 = vector("list",nwebs)
 
+#Competition coefficients.
+aii_all = matrix(0,nwebs,2)
+aij_all = matrix(0,nwebs,2)
+aii_rc = aii_all
+aij_rc = aii_all
+
+
 ###Species numbers
 #Assume 2 trophic levels unless otherwise specified.
 nRsp = 2 #Algae
@@ -515,6 +522,210 @@ nspp = nRsp+nCsp+nPsp
 #=============================================================================
 par(mfrow=c(6,1),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
 
+for (w in 1:nwebs){ 
+	#Main list of species parameters for the model
+	spp_prms = NULL
+
+	#############################
+	#Resources: 
+	#This isn't the actual carrying capacity, but the amount that's added every 
+	#time step and we assume it's the maximum possible. 
+	spp_prms$Kr = matrix(10E6, nRsp, 1) #carrying capacity -- Constant algal addition
+
+	#Random algal/consumer fluctuations. 
+	#Algae
+	c1 = 1 #10E6
+	amp1 = 0.25 #100000 #1/exp(1)
+	spp_prms
+
+	############################
+	#Consumers: 
+	#
+	###Random fluctuations in the consumers
+	daph_tmp = subset(m1_data_long, species == "daphnia" & temperature == temps[[w]]) #Daphnia at temp
+	dia_tmp = subset(m1_data_long, species == "diaphanosoma" & temperature == temps[[w]] ) #Daphnia at temp
+
+	#Approximate a carrying capacity to get the right magnitude of fluctuations: 
+	daph_tmp_a=daph_tmp[daph_tmp$day_n<50, ]
+	dia_tmp_a=dia_tmp[dia_tmp$day_n<50, ]
+	spp_prms$Kc = matrix(c(mean(daph_tmp_a$N,na.rm=T),2*mean(dia_tmp_a$N,na.rm=T)), nCsp, 1) #carrying capacities, approximately matching data
+	Kc_sd = matrix(c(sqrt(var(daph_tmp_a$N,na.rm=T)),sqrt(var(dia_tmp_a$N,na.rm=T))), nCsp, 1)
+	
+	c2 = 1
+	amp2 = mean(spp_prms$Kc/Kc_sd) #Take an average coefficient of variation. 
+	res_R = c(amp1,c1,amp2,c2)
+
+	#Misc.
+	spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
+	spp_prms$muC = matrix(0.0, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates	
+
+	###Consumption rates: 
+	#The coefficient that we want could be in one of two places, depending on whether the 
+	#growth curve (in resource_fits1.R) was fit by an LM or NLS. 
+	if(class(cl_daph[[w]]$fit_mod) == "nls" ){ daph_C = coef(cl_daph[[w]]$fit_mod)[1]} else {daph_C = coef(cl_daph[[w]]$fit_mod)[2] }
+	if(class(cl_dia[[w]]$fit_mod) == "nls" ){ dia_C = coef(cl_dia[[w]]$fit_mod)[1]} else {dia_C = coef(cl_dia[[w]]$fit_mod)[2] }
+	spp_prms$cC = t(matrix(abs(c(daph_C,dia_C)),nRsp,nCsp ))
+
+	#Intrinsic growth rates: 
+	#The coefficient that we want could be in one of two places, depending on whether the 
+	#growth curve (in resource_fits1.R) was fit by an LM or NLS. 
+	if(class(cR_daph[[w]]$fit_mod) == "nls" ){ daph_C = coef(cR_daph[[w]]$fit_mod)[1]} else {daph_C = coef(cR_daph[[w]]$fit_mod)[2] }
+	if(class(cR_dia[[w]]$fit_mod) == "nls" ){ dia_C = coef(cR_dia[[w]]$fit_mod)[1]} else {dia_C = coef(cR_dia[[w]]$fit_mod)[2] }
+	spp_prms$rC = t(matrix(abs(c(daph_C,dia_C)),nRsp,nCsp ) )#/spp_prms$cC 
+
+	#The competition coefficients in the MacArthur RC model are given by cil*cjl*ri*Kl/Rl: 
+	#cil/cjl are the consumption rates of resource l by species i/j, ri is species i's growth
+	#rate based on consumption and Kl/Rl is the carrying capacity/growth rate of resource l. 
+	#We use this relationship and set these alphas = phenomenological alphas then solve for Rl so
+	#coefficients match.  
+	aii_rc[w,] = (10E6*spp_prms$cC[1,]^2*spp_prms$rC[1,])
+	aij_rc[w,] = (10E6*spp_prms$cC[1,]*spp_prms$cC[1,2:1]*spp_prms$rC[1,])
+
+	#Phenomenological alphas.
+  	aii_all[w,1] = abs(coef(lvii_daph[[w]])[2])
+  	aii_all[w,2] = abs(coef(lvii_dia[[w]])[2])
+  	aij_all[w,1] = abs(coef(lvij_daph[[w]])[2])
+  	aij_all[w,2] = abs(coef(lvij_dia[[w]])[2])
+
+	# The trick now is to figure out how to adjust the RC alphas to match the phenomenological
+	# alphas by determining an appropriate R1 and the properties of a fictitious resource 2.  
+	# The approach here starts by assuming aii (for Daphnia) is correct and building from there.
+
+	#1.) Determine the R1 that makes aii correct and assume C1 only benefits from resource 1: 
+	spp_prms$rR =aii_rc[w,]/aii_all[w,]
+	spp_prms$rC[2,1] =0 
+
+	#2.) Correct cC[2] (Diaphanosoma) based on aij
+	spp_prms$cC[,2] = spp_prms$rR[1]/spp_prms$Kr[1] * aij_all[w,1]/(spp_prms$cC[1,1]*spp_prms$rC[1,1])
+
+	#3.) This leads to a new ajj for Diaphanosoma:
+	aii_rc[w,2]=(10E6*spp_prms$cC[1,2]^2*spp_prms$rC[1,2])/spp_prms$rR[1]
+
+	#4.) Which differs from the phenomenological ajj by:
+	ajj_diff = abs(aii_rc[w,2] - aii_all[w,2] )
+
+	#5.) Make this the basis for a fictitious second resource that makes ajj correct now:
+	# *Assuming Diaphanosoma utilizes R2 at the same rates as R1 and that R2 = 1, 
+	# *which makes K2 the only free parameter. 
+	spp_prms$rR[2] = 10
+	spp_prms$Kr[2] = (spp_prms$rR[2]*ajj_diff)/( spp_prms$cC[1,2]^2*spp_prms$rC[1,2] )
+
+	#6.) This creates a new aji for Dia that must be corrected for by giving Daphnia a positive
+	# consumption rate of R2 (which then must be removed from Daphnia's growth equation by making
+	# its rC2=0 )
+	spp_prms$cC[2,1] = (spp_prms$rR[2]/spp_prms$Kr[2])*(
+		aij_all[w,2]/(spp_prms$cC[1,2]*spp_prms$rC[1,2]) - (spp_prms$cC[1,1]*spp_prms$Kr[1]/spp_prms$rR[1]) )
+	
+	#7.) Check: 
+	aii_check = t(spp_prms$cC^2*spp_prms$rC)%*%(spp_prms$Kr/spp_prms$rR) 
+	aij_check = t(spp_prms$cC*spp_prms$cC[,2:1]*spp_prms$rC)%*%(spp_prms$Kr/spp_prms$rR) 
+
+	
+	########Predators: These are just dummy variables for now
+	spp_prms$rP =  matrix(0.0, 1, 1) #matrix(rnorm(nPsp,0.5,0), nPsp, 1) #intrisic growth
+	spp_prms$eFp = matrix(1,1,nCsp) # just make the efficiency for everything 1 for now
+	spp_prms$muP = matrix(0.0, 1, 1)#matrix(rnorm(nPsp,0.6,0), nPsp, 1)  #mortality rates
+	#Consumption rates: 
+	spp_prms$cP = matrix(c(0.0,0.0),nCsp,1)
+	spp_prms$aii = matrix(c(0.10,0.08),1,2)
+	spp_prms$aij = matrix(c(0.10,0.08),1,2)
+
+	# aii = (10E6*spp_prms$cC^2*spp_prms$rC)/spp_prms$rR[1]
+	# aij = (10E6*spp_prms$cC*spp_prms$cC[2:1]*spp_prms$rC)/spp_prms$rR[1]
+
+
+	#=============================================================================
+	# This function gives: 
+	# out 		The time series for of population growth for each species in the web
+	#			This can be set to just give the final 2 time steps of the web with
+	#			"final = TRUE"
+	# spp_prms	The parameters of all species in the food web
+	#=============================================================================
+	#
+	winit = matrix(c(spp_prms$Kr[1], spp_prms$Kr[2], 4,0,0))
+	tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
+		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
+
+	print(out1[[w]]$out[tl,])
+
+	#Look at basic plots on the fly: 
+	plot(out1[[w]]$out[,4],t="l",ylim=c(0,max(out1[[w]]$out[tl,3:4])))
+	points(dia_tmp$day_n, dia_tmp$N)
+	lines( out1[[w]]$out[,3],col="red",t="l")
+	points(daph_tmp$day_n,daph_tmp$N, col="red")
+
+	# daph_tmp = subset(mesos_daph, temperature == temps[[w]]) #Daphnia at temp
+	# dia_tmp = subset(mesos_dia, temperature == temps[[w]] ) #Daphnia at temp
+	# plot(dia_tmp$day_n-27, dia_tmp$N)
+	# lines( out1[[w]]$out[,4])
+	
+	# plot(daph_tmp$day_n-27, daph_tmp$N)
+	# lines( out1[[w]]$out[,3])
+
+	#=============================================================================
+	# Inner loop: Mutual invasion:remove each species and track the dynamics
+	#=============================================================================
+	a_temp = NULL
+	for (s in 1:2){
+
+		out_temp =NULL
+		out_temp2 =NULL
+		inv_spp = s+1
+		winit =  out1[[w]]$out[tl,2:(nspp+1)]
+		winit[inv_spp] = 0
+
+		#Equilibrate new community
+		tryCatch( {out_temp = (food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
+		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
+
+		#Invade
+		#ti = which(out_temp$out[ ,nRsp+3] == max(out_temp$out[,nRsp+3] ) )
+		ti = tl
+		winit =  out_temp$out[ti,2:(nspp+1)]
+		winit[inv_spp] = 4
+
+		#Invade new community
+		tryCatch( {out_temp2 = (food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
+		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
+		
+		a_temp =rbind(a_temp, out_temp$out, out_temp2$out)
+
+
+		#Competition from competitor
+		#plot(out_temp2$out[1500:2000,(s+1)])
+		#ts1=log(out_temp2$out[1500:2000,(s+1)])
+		
+		#"Competition" from predator
+		# plot(out_temp2$out[50:300,(s+1)])
+		# ts1=log(out_temp2$out[50:300,(s+1)])
+		# ts2=1:length(ts1)
+		# summary(lm(ts1~ts2))
+	}
+
+	out_inv1 [[w]] = a_temp
+	#Look at basic plots on the fly: 
+
+	mlt1 = 1/delta1
+	plot(out_inv1 [[w]][1:(tl+1),1]*mlt1,out_inv1 [[w]][tl:(tl*2),4],t="l",ylim=c(0,max(out_inv1 [[w]][,3:4])),
+		xlim=c(0,100))
+	points(dia_tmp$day_n, dia_tmp$N)
+	lines(out_inv1 [[w]][1:(tl+1),1]*mlt1, out_inv1 [[w]][tl:(tl*2),3],col="red")
+	points(daph_tmp$day_n,daph_tmp$N, col="red")
+
+	lines(out_inv1 [[w]][1:(tl),1], out1[[w]]$out[1:(tl),4],col="green")
+	lines(out_inv1 [[w]][1:(tl),1], out1[[w]]$out[1:(tl),3],col="blue")
+
+	#Look at basic plots on the fly: 
+	plot(out_inv1 [[w]][tl:(tl*2),4],t="l",ylim=c(0,max(out_inv1 [[w]][,3:4])),xlim=c(0,100))
+	points(dia_tmp$day_n, dia_tmp$N)
+	lines( out_inv1 [[w]][tl:(tl*2),3],col="red")
+	points(daph_tmp$day_n,daph_tmp$N, col="red")
+
+	#Look at basic plots on the fly: 
+	plot(out_inv1 [[w]][1:1000,1]*100,out_inv1 [[w]][1:1000,4],t="l",ylim=c(0,max(out_inv1 [[w]][,3:4])))
+	points(dia_tmp$day_n, dia_tmp$N)
+	lines(out_inv1 [[w]][1:1000,1]*100, out_inv1 [[w]][1:1000,3],col="red")
+	points(daph_tmp$day_n,daph_tmp$N, col="red")
 
 
 

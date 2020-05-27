@@ -12,7 +12,6 @@ library(tidyverse)
 library(lubridate)
 library(mgcv)
 library(fields)
-source("./info_theory_functions.R")
 #=============================================================================
 #Data sorting and preprocessing: 
 #=============================================================================

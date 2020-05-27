@@ -174,7 +174,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 			rR = spp_prms$rR, Kr =spp_prms$Kr, Kc =spp_prms$Kc,
 			rC = spp_prms$rC, eFc = spp_prms$eFc, muC = spp_prms$muC, cC = spp_prms$cC,
 			rP = spp_prms$rP, eFp = spp_prms$eFp, muP = spp_prms$muP, cP = spp_prms$cP,
-			a = a, b=b,aii=aii,aij=aij)
+			a = a, b=b)
 
 
 		food_web = function(times,sp,parms){
@@ -192,6 +192,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 
 					#Logistic dynamics
 					dR[i] = (a[[i]](times)-R[i]/Kr[i])*rR[i]*R[i] - (t(cC[i,]*R[i])%*%C)
+
 					#Etc. 
 					#dR[i] = a[[i]](times) - (t(cC[i,]*((R[i]-R[i]^2/Ki)))%*%C)
 					#dR[i] = a[[i]](times) - (t(cC[i,]*R[i])%*%C)
@@ -214,11 +215,10 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 					#dC[i] = ( (C[i] *cC[,i]*rC[i])%*%R ) * (b[[i]](times) - C[i]/Kc[i])
 					
 					#Classic resource-consumer
-					#dC[i] = ( (C[i] *cC[,i]*rC[i])%*%R ) * (b[[i]](times) - cC[,i]*C[i] - cC[,-i]%*%C[-i] )
-					#dC[i] = ( (C[i] )*b[[i]](times) ) * (cC[,i]*rC[i]%*%R-1)
-					#dC[i] = C[i]  * (cC[,i]*rC[i]*b[[i]](times)*Kr - cC[,i]*rC[i]*cC[,i]*C[i] - cC[,i]*rC[i]*cC[,-i]%*%C[-i] )
-					#dC[i] = C[i]  * (1 - cC[,i]*rC[i]*cC[,i]*C[i]*Kr[1]/rR[1] - cC[,i]*rC[i]*cC[,-i]*C[-i]*Kr[1]/rR[1] )
-					dC[i] = C[i]* (b[[i]](times)  - cC[,i]*rC[i]*cC[,i]*Kr[1]/rR[1]*C[i] - cC[,i]*rC[i]*cC[,-i]*Kr[1]/rR[1]*C[-i] )
+					dC[i] = ( (C[i] )*b[[i]](times) ) * ( (cC[,i]*rC[,i])%*%R-1)
+				
+					#Classic resource-consumer, solved LV version
+					#dC[i] = C[i]* (b[[i]](times)  - cC[,i]*rC[i]*cC[,i]*Kr[1]/rR[1]*C[i] - cC[,i]*rC[i]*cC[,-i]*Kr[1]/rR[1]*C[-i] )
 
 
 					#Etc
@@ -250,8 +250,8 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 				}
 
 			for( i in 1:nRsp){
-				a[[i]] = a[[i]](times) 
-				#a = (rR[1]+a(times))
+				a[[i]] = a[[i]](times)
+				b[[i]] = b[[i]](times)  
 			}
 
 			return(list(c(dR,dC,dP)))
