@@ -195,9 +195,9 @@ igrij_prms = c("b1","c1") #Treat a1 as fixed
 # First approach, in combo with IGR models
 #=============================================================================
 # Intraspecific competition models
-f_lvii = Ndiff ~ N
+#f_lvii = Ndiff ~ N 
 # Interspecific competition models
-f_lvij = Ndiff ~ N
+#f_lvij = Ndiff ~ N 
 
 #=============================================================================
 #Second approach
@@ -216,6 +216,11 @@ f_lvij = Ndiff ~ N
 #2. Untransformed Lotka Volterra 
 #f_lvii = formula ( Ndiff ~  ri*(1-aii*N) )
 
+#2b. LV model without fitting ri, constrained intercept (using offset=1: see below)
+f_lvii = Ndiff ~ N +0
+#f_lvii = Ndiff ~ N 
+
+
 #3. *** Leslie-Gower ***
 #f_lvii = formula ( Ndiff ~  ri/(1+aii*N) )
 
@@ -224,6 +229,9 @@ f_lvij = Ndiff ~ N
 
 #1. Lotka Volterra, aij only 
 #f_lvij = formula ( Ndiff ~  ri*(1-aij*N_res) )
+
+#1b.. LV model without fitting ri, constrained intercept (using offset=1: see below)
+f_lvij = Ndiff ~ N_res +0
 
 #2. Leslie Gower, aij only. 
 #f_lvij = formula ( Ndiff ~  ri/(1+aij*N_res) )
@@ -346,19 +354,29 @@ for(t in 1:ntemps) {
 	#Intraspecific competition, when fitting to the above model fits igr_specis 
 	#instead of directly to the data. 
 	#Add Ndiff
-	igr_daph_tmp$Ndiff = (igr_daph_tmp$N-lag(igr_daph_tmp$N))/
-                        (igr_daph_tmp$day_n-lag(igr_daph_tmp$day_n))*1/igr_daph_tmp$N
-	igr_dia_tmp$Ndiff = (igr_dia_tmp$N-lag(igr_dia_tmp$N))/
-                        (igr_dia_tmp$day_n-lag(igr_dia_tmp$day_n))*1/igr_dia_tmp$N
-	lvii_daph[[t]] = lm(f_lvii, igr_daph_tmp )
-	lvii_dia[[t]] = lm(f_lvii,igr_dia_tmp )
+	# igr_daph_tmp$Ndiff = (igr_daph_tmp$N-lag(igr_daph_tmp$N))/
+ #                        (igr_daph_tmp$day_n-lag(igr_daph_tmp$day_n))*1/igr_daph_tmp$N
+	# igr_dia_tmp$Ndiff = (igr_dia_tmp$N-lag(igr_dia_tmp$N))/
+ #                        (igr_dia_tmp$day_n-lag(igr_dia_tmp$day_n))*1/igr_dia_tmp$N
+	# lvii_daph[[t]] = lm(f_lvii, igr_daph_tmp )
+	# lvii_dia[[t]] = lm(f_lvii,igr_dia_tmp )
+
+	#Intraspecific competition, when fitting only to the "invasion" portion of data
+ 	daph_tmpb_inv = subset(daph_tmpb, day_n <= (inv_end-inv_day) )
+ 	dia_tmpb_inv = subset(dia_tmpb, day_n <= (inv_end-inv_day) )
+
+ 	#Assume that only positive increments reflect growth? 
+	daph_tmpb_inv  = subset(daph_tmpb_inv , Ndiff>0)
+	dia_tmpb_inv= subset(dia_tmpb_inv, Ndiff>0)
+
+	lvii_daph[[t]] = lm(f_lvii, daph_tmpb_inv, offset = rep(1,length(daph_tmpb_inv$N))  )
+	lvii_dia[[t]] = lm(f_lvii,dia_tmpb_inv, offset = rep(1,length(dia_tmpb_inv$N))  )
 
 	#=============================================================================
 	#Interspecific competition
 	#=============================================================================
-	#Make the invasion data sets by isolating portions of time series where a species
-	#invades. 
-	daph_inv_tmp = get_new_inv(m1_data_long, rspecies[1], temps[t], inv_day, inv_end )
+	#First, try fitting a logistic model to the growth rate: 
+	daph_inv_tmp = get_new_inv(m1_data_long, rspecies[1], temps[t], inv_day, inv_end)
 	dia_inv_tmp = get_new_inv(m1_data_long, rspecies[2], temps[t], inv_day, inv_end )
 
 	igrij_daph[[t]] = get_mod_fit( mod_data =daph_inv_tmp, mod_fit = igrij, mod_prms = igrij_prms,
@@ -384,13 +402,23 @@ for(t in 1:ntemps) {
 	#Interspecific competition, when fitting to the above model fits igrij_specis 
 	#instead of directly to the data. 
 	#Add Ndiff
-	igrij_daph_tmp$Ndiff = (igrij_daph_tmp$N-lag(igrij_daph_tmp$N))/
-                        (igrij_daph_tmp$day_n-lag(igrij_daph_tmp$day_n))*1/igrij_daph_tmp$N
-	igrij_dia_tmp$Ndiff = (igrij_dia_tmp$N-lag(igrij_dia_tmp$N))/
-                        (igrij_dia_tmp$day_n-lag(igrij_dia_tmp$day_n))*1/igrij_dia_tmp$N
-	lvij_daph[[t]] = lm(f_lvij, igrij_daph_tmp )
-	lvij_dia[[t]] = lm(f_lvij,igrij_dia_tmp )
+	# igrij_daph_tmp$Ndiff = (igrij_daph_tmp$N-lag(igrij_daph_tmp$N))/
+ #                        (igrij_daph_tmp$day_n-lag(igrij_daph_tmp$day_n))*1/igrij_daph_tmp$N
+	# igrij_dia_tmp$Ndiff = (igrij_dia_tmp$N-lag(igrij_dia_tmp$N))/
+ #                        (igrij_dia_tmp$day_n-lag(igrij_dia_tmp$day_n))*1/igrij_dia_tmp$N
+	# lvij_daph[[t]] = lm(f_lvij, igrij_daph_tmp )
+	# lvij_dia[[t]] = lm(f_lvij,igrij_dia_tmp )
 
+	####Fit a linear model with a fixed intercept to the invasion growth rate:
+	daph_inv_tmp = get_new_inv(m1_data_long, rspecies[1], temps[t], inv_day, inv_end)
+	dia_inv_tmp = get_new_inv(m1_data_long, rspecies[2], temps[t], inv_day, inv_end )
+
+	#Assume that only positive increments reflect growth? 
+	daph_inv_tmp = subset(daph_inv_tmp, Ndiff>0)
+	dia_inv_tmp = subset(dia_inv_tmp, Ndiff>0)
+
+	lvij_daph[[t]] = lm(f_lvij, daph_inv_tmp, offset = rep(1,length(daph_inv_tmp$N_res))  )
+	lvij_dia[[t]] = lm(f_lvij,dia_inv_tmp, offset = rep(1,length(dia_inv_tmp$N_res))  )
 
 	#Output
 	print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
@@ -555,10 +583,7 @@ for (w in 1:nwebs){
 	amp2 = mean(spp_prms$Kc/Kc_sd) #Take an average coefficient of variation. 
 	res_R = c(amp1,c1,amp2,c2)
 
-	#Misc.
-	spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
-	spp_prms$muC = matrix(0.0, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates	
-
+	
 	###Consumption rates: 
 	#The coefficient that we want could be in one of two places, depending on whether the 
 	#growth curve (in resource_fits1.R) was fit by an LM or NLS. 
@@ -582,10 +607,10 @@ for (w in 1:nwebs){
 	aij_rc[w,] = (10E6*spp_prms$cC[1,]*spp_prms$cC[1,2:1]*spp_prms$rC[1,])
 
 	#Phenomenological alphas.
-  	aii_all[w,1] = abs(coef(lvii_daph[[w]])[2])
-  	aii_all[w,2] = abs(coef(lvii_dia[[w]])[2])
-  	aij_all[w,1] = abs(coef(lvij_daph[[w]])[2])
-  	aij_all[w,2] = abs(coef(lvij_dia[[w]])[2])
+  	aii_all[w,1] = abs(coef(lvii_daph[[w]])[1])
+  	aii_all[w,2] = abs(coef(lvii_dia[[w]])[1])
+  	aij_all[w,1] = abs(coef(lvij_daph[[w]])[1])
+  	aij_all[w,2] = abs(coef(lvij_dia[[w]])[1])
 
 	# The trick now is to figure out how to adjust the RC alphas to match the phenomenological
 	# alphas by determining an appropriate R1 and the properties of a fictitious resource 2.  
@@ -595,8 +620,8 @@ for (w in 1:nwebs){
 	spp_prms$rR =aii_rc[w,]/aii_all[w,]
 	spp_prms$rC[2,1] =0 
 
-	#2.) Correct cC[2] (Diaphanosoma) based on aij
-	spp_prms$cC[,2] = spp_prms$rR[1]/spp_prms$Kr[1] * aij_all[w,1]/(spp_prms$cC[1,1]*spp_prms$rC[1,1])
+	#2.) Correct cC[1,2] (Diaphanosoma) based on aij
+	spp_prms$cC[1,2] = spp_prms$rR[1]/spp_prms$Kr[1] * aij_all[w,1]/(spp_prms$cC[1,1]*spp_prms$rC[1,1])
 
 	#3.) This leads to a new ajj for Diaphanosoma:
 	aii_rc[w,2]=(10E6*spp_prms$cC[1,2]^2*spp_prms$rC[1,2])/spp_prms$rR[1]
@@ -607,32 +632,43 @@ for (w in 1:nwebs){
 	#5.) Make this the basis for a fictitious second resource that makes ajj correct now:
 	# *Assuming Diaphanosoma utilizes R2 at the same rates as R1 and that R2 = 1, 
 	# *which makes K2 the only free parameter. 
-	spp_prms$rR[2] = 10
-	spp_prms$Kr[2] = (spp_prms$rR[2]*ajj_diff)/( spp_prms$cC[1,2]^2*spp_prms$rC[1,2] )
+	#spp_prms$rR[2] = spp_prms$rR[1]/10 
+	spp_prms$cC[2,2] = spp_prms$cC[1,1] -spp_prms$cC[1,2]
+	spp_prms$Kr[2] = (spp_prms$rR[2]*ajj_diff)/( spp_prms$cC[2,2]^2*spp_prms$rC[2,2] )
 
 	#6.) This creates a new aji for Dia that must be corrected for by giving Daphnia a positive
 	# consumption rate of R2 (which then must be removed from Daphnia's growth equation by making
 	# its rC2=0 )
-	spp_prms$cC[2,1] = (spp_prms$rR[2]/spp_prms$Kr[2])*(
-		aij_all[w,2]/(spp_prms$cC[1,2]*spp_prms$rC[1,2]) - (spp_prms$cC[1,1]*spp_prms$Kr[1]/spp_prms$rR[1]) )
+	spp_prms$cC[2,1]= (aij_all[w,2]-(spp_prms$cC[1,2]*spp_prms$cC[1,1]*spp_prms$rC[1,2]*spp_prms$Kr[1]/spp_prms$rR[1]) )*
+	spp_prms$rR[2]/(spp_prms$Kr[2]*spp_prms$cC[2,2]*spp_prms$rC[2,2])  
 	
 	#7.) Check: 
 	aii_check = t(spp_prms$cC^2*spp_prms$rC)%*%(spp_prms$Kr/spp_prms$rR) 
 	aij_check = t(spp_prms$cC*spp_prms$cC[,2:1]*spp_prms$rC)%*%(spp_prms$Kr/spp_prms$rR) 
 
+	#Misc.
+	spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
+	spp_prms$muC = matrix(1, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates	
+	#To give species their actual growth rates: 
+	# spp_prms$eFc[1] = abs(coef(igr_daph[[w]]$fit_mod)["c1"])
+	# spp_prms$eFc[2] = abs(coef(igr_dia[[w]]$fit_mod)["c1"])
+
+	#This parameterizes the CR model to match to the LV in the standard form of 
+	# (1 - competition), where 1 = k in Chesson 1990. 
+	spp_prms$muC=t(spp_prms$cC*spp_prms$rC)%*%(spp_prms$Kr)-1
 	
+	spp_prms$aii = aii_all[w,]
+	spp_prms$aij = aij_all[w,]
+
+
 	########Predators: These are just dummy variables for now
 	spp_prms$rP =  matrix(0.0, 1, 1) #matrix(rnorm(nPsp,0.5,0), nPsp, 1) #intrisic growth
 	spp_prms$eFp = matrix(1,1,nCsp) # just make the efficiency for everything 1 for now
 	spp_prms$muP = matrix(0.0, 1, 1)#matrix(rnorm(nPsp,0.6,0), nPsp, 1)  #mortality rates
 	#Consumption rates: 
 	spp_prms$cP = matrix(c(0.0,0.0),nCsp,1)
-	spp_prms$aii = matrix(c(0.10,0.08),1,2)
-	spp_prms$aij = matrix(c(0.10,0.08),1,2)
-
-	# aii = (10E6*spp_prms$cC^2*spp_prms$rC)/spp_prms$rR[1]
-	# aij = (10E6*spp_prms$cC*spp_prms$cC[2:1]*spp_prms$rC)/spp_prms$rR[1]
-
+	# spp_prms$aii = matrix(c(0.10,0.08),1,2)
+	# spp_prms$aij = matrix(c(0.10,0.08),1,2)
 
 	#=============================================================================
 	# This function gives: 
@@ -642,7 +678,7 @@ for (w in 1:nwebs){
 	# spp_prms	The parameters of all species in the food web
 	#=============================================================================
 	#
-	winit = matrix(c(spp_prms$Kr[1], spp_prms$Kr[2], 4,0,0))
+	winit = matrix(c(spp_prms$Kr[1], spp_prms$Kr[2], 4,4,0))
 	tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
 		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 

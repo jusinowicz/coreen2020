@@ -106,7 +106,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 
 	rR=(spp_prms$rR); Kr =spp_prms$Kr; Kc =spp_prms$Kc; rC = spp_prms$rC; eFc = spp_prms$eFc
 	muC = spp_prms$muC; cC = spp_prms$cC; rP = spp_prms$rP; eFp = spp_prms$eFp
-	muP = spp_prms$muP; cP = spp_prms$cP
+	muP = spp_prms$muP; cP = spp_prms$cP; aii= spp_prms$aii; aij = spp_prms$aij
 
 
 	if ( length(res_R)>0){
@@ -174,7 +174,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 			rR = spp_prms$rR, Kr =spp_prms$Kr, Kc =spp_prms$Kc,
 			rC = spp_prms$rC, eFc = spp_prms$eFc, muC = spp_prms$muC, cC = spp_prms$cC,
 			rP = spp_prms$rP, eFp = spp_prms$eFp, muP = spp_prms$muP, cP = spp_prms$cP,
-			a = a, b=b)
+			a = a, b=b, aii=spp_prms$aii, aij=spp_prms$aij)
 
 
 		food_web = function(times,sp,parms){
@@ -191,7 +191,8 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 					#dR[i] = Kr[i]*a[[i]](times)- (t(cC[i,]*R[i])%*%C)
 
 					#Logistic dynamics
-					dR[i] = (a[[i]](times)-R[i]/Kr[i])*rR[i]*R[i] - (t(cC[i,]*R[i])%*%C)
+					dR[i] = (a[[i]](times)-R[i]/Kr[i])*rR[i]*R[i] - (t(cC[i,])%*%C)*R[i]
+					#dR[i] = (a[[i]](times)-R[i]/Kr[i])*rR[i]*R[i] - (cC[i,1]*C[1]+cC[i,2]*C[2])*R[i]
 
 					#Etc. 
 					#dR[i] = a[[i]](times) - (t(cC[i,]*((R[i]-R[i]^2/Ki)))%*%C)
@@ -215,12 +216,17 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 					#dC[i] = ( (C[i] *cC[,i]*rC[i])%*%R ) * (b[[i]](times) - C[i]/Kc[i])
 					
 					#Classic resource-consumer
-					dC[i] = ( (C[i] )*b[[i]](times) ) * ( (cC[,i]*rC[,i])%*%R-1)
-				
+					dC[i] = ( eFc[i]*(C[i] ) ) * ( (cC[,i]*rC[,i])%*%R-muC[i])
+					#b[[i]](times)
+					#dC[i] = ( (C[i] )*b[[i]](times) ) * ( (cC[1,i]*rC[1,i]*R[1]+cC[2,i]*rC[2,i]*R[2])-muC[i])
+
 					#Classic resource-consumer, solved LV version
-					#dC[i] = C[i]* (b[[i]](times)  - cC[,i]*rC[i]*cC[,i]*Kr[1]/rR[1]*C[i] - cC[,i]*rC[i]*cC[,-i]*Kr[1]/rR[1]*C[-i] )
+					#dC[i] = C[i]* (b[[i]](times)  - t(cC[,i]^2*rC[,i])%*%(Kr/rR)*C[i] - t(cC[,i]*rC[,i]*cC[,-i])%*%(Kr/rR)*C[-i] )
 
-
+					#LV with phenomenological coefficients
+					#dC[i] = C[i]* (muC - aii[i]*C[i] - aij[i]*C[-i] )
+					
+					#print(paste("aii ", aii[i], " and aij ", aij[i]))
 					#Etc
 					#dC[i] = C[i] * ( rC[i] *(eFc[i]*cC[,i])%*%((R-R^2/Ki)) -muC[i] )
 					#dC[i] = C[i] * ( ( rC[i] * (eFc[i]*cC[,i])%*%(R)) * ( 1 - C[i]/Kc[i] ) - muC[i] )
