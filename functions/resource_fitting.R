@@ -113,9 +113,21 @@ get_new_inv = function (m1_data_long, species1, temperature,inv_day,inv_end ) {
 }
 
 #=============================================================================
-#Function fitting
+# get_mod_fit ()
+# Function fitting
+# This is a wrapper function for fitting NLS models, predicting values based
+# on the fitted model, and error controlling when the models fail. If an NLS 
+# fit fails with default conditions a second algorithm is attempted, and if this 
+# also fails then a linear model is attempted. 
+# mod_data            The input data set 
+# mod_fit             The formula of the model to fit 
+# mod_prms            A list of model parameters 
+# prm_start           The starting values of parameters to be fit
+# mod_x               The X value used in the model fitting, for prediction
+# lm_mod              If supplied, use this linear model structure if NLS fails
+# fixed               Use this to treat a parameter in the supplied mod_fit as 
+#                     a fixed parameter. 
 #=============================================================================
-
 
 get_mod_fit = function ( mod_data, mod_fit, mod_prms, prm_start, mod_x, 
   lm_mod = NULL, fixed = NULL) {
@@ -192,4 +204,137 @@ get_mod_fit = function ( mod_data, mod_fit, mod_prms, prm_start, mod_x,
     return(fit_mod)
   }
  
+}
+
+
+#=============================================================================
+# get_info_ts() 
+# Data processing to prepare data from the real empirical data to be passed
+# to the info theory functions (in info_theory_functions.R). 
+#
+#
+#=============================================================================
+
+get_info_ts = function (m1_data_long, mesosi ){ 
+  #=============================================================================
+  #Make new resident and invader data sets.
+  #=============================================================================
+  #Make a new resident data set to fit the growth rate function with nlme/nls 
+  #The new data set includes a column for n(t+1)/n(t) and a columnf for the time 
+  #interval across subsequent measurements.  
+  m1_tmp = subset(m1_data_long, mesocosm_id == mesosi)
+  sp_tmp = substr(as.character(unique(mesosi)),1,3) #Resident
+  r_sp = rspecies[grepl(sp_tmp,rspecies,fixed=T)]
+
+  res_tmp = subset(m1_tmp, species == r_sp  ) %>% arrange(day_n)
+  res_tmp = res_tmp[!is.na(res_tmp$N),] #NLME won't work with NAs 
+  #Arrange the data by replicate number, then add a new column for the delta N
+  res_tmp = res_tmp %>% 
+      arrange(replicate_number)%>%
+      mutate(Ndiff_res = lead( N-lag(N),)/lead(day_n-lag(day_n))*1/N) #"lead" lines up the result 
+     
+  #Add a new column for the change in algal biomass
+  res_tmp = res_tmp %>%
+      mutate(Ndiff_alg = (lag(algae_cells_mL)- algae_abundance ) )  #"lead" lines up the result
+
+  res_tmp$Ndiff_res[res_tmp$day_n == max(res_tmp$day_n,na.rm=T )] =NA #Remove last day
+  res_tmp = res_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step
+  res_tmp$tdiff[res_tmp$tdiff<0] = 1 #Remove negative time steplag(N)s
+  res_tmp = res_tmp %>% mutate(N_res = N)
+  colnames(res_tmp)[colnames(res_tmp)=="zooplankton_length_cm"] = "zooplankton_length_cm_res"
+
+  #Make a new invader data set to fit the growth rate function with nlme/nls 
+  #The new data set includes a column for n(t+1)/n(t) and a columnf for the time 
+  #interval across subsequent measurements.  
+  i_sp = rspecies[!grepl(sp_tmp,rspecies,fixed=T)]
+  inv_tmp = subset(m1_tmp, species == i_sp )%>% arrange(day_n)
+  inv_tmp = inv_tmp[!is.na(inv_tmp$N),]
+  #inv_tmp$N[is.na(inv_tmp$N)] = 0 #Replace NAs with 0  
+  #Arrange the data by replicate number, then add a new column for the delta N
+  inv_tmp = inv_tmp %>% 
+      arrange(replicate_number)%>%
+      mutate(Ndiff_inv = lead( N-lag(N),)/lead(day_n-lag(day_n))*1/N) #"lead" lines up the result 
+  
+  #Add a new column for the change in algal biomass
+  inv_tmp = inv_tmp %>%
+      mutate(Ndiff_alg = (lag(algae_cells_mL)- algae_abundance) )  #"lead" lines up the result
+
+  inv_tmp$Ndiff_inv[inv_tmp$day_n == max(inv_tmp$day_n,na.rm=T )] =NA #Remove last day
+  inv_tmp = inv_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step 
+  inv_tmp = inv_tmp %>% mutate(N_inv = N)
+  colnames(inv_tmp)[colnames(inv_tmp)=="zooplankton_length_cm"] = "zooplankton_length_cm_inv"
+
+  #This line adds the resident densities on the matching days from the matching 
+  #replicates to the data table inv_tmp
+  inv_tmp = inv_tmp %>% left_join( 
+    select( res_tmp, replicate_number, day_n, zooplankton_length_cm_res, N_res, Ndiff_res),
+    by= (c( "day_n" = "day_n", "replicate_number"="replicate_number" )) )
+  res_tmp = res_tmp %>% left_join( 
+     select( inv_tmp, replicate_number,day_n, zooplankton_length_cm_inv, N_inv, Ndiff_inv),
+     by= (c( "day_n" = "day_n", "replicate_number"="replicate_number" )) )
+  inv_tmp = inv_tmp[!is.na(inv_tmp$N_inv), ] #Omit NAs
+  res_tmp = res_tmp[!is.na(res_tmp$N_res) , ]
+
+  #Create a dummy data set in the few cases that experiment was essentially 
+  #unsuccesful: 
+  if(dim(inv_tmp)[1] <=0  ){
+    
+    #New population, diff,algal, and body size data
+    #mydata_res = subset(res_tmp, day_n >= inv_day  ) #Only days after invasion
+    mydata_res = res_tmp
+    mydata_res$N_inv = 0
+    out1[[i]] = mydata_res[!is.na(mydata_res$N_res), ]
+
+    #Take the time series and interpolate missing days:
+    new_days = data.frame(day_n = seq(min(out1[[i]]$day_n),max(out1[[i]]$day_n,1) ),
+             species = out1[[i]]$species[1], replicate_number = out1[[i]]$replicate_number[1],  
+             invade_monoculture = out1[[i]]$invade_monoculture[1], 
+             temperature= out1[[i]]$temperature[1], mesocosm_id =out1[[i]]$mesocosm_id[1] )
+
+    out_tmp = new_days %>% left_join(out1[[i]][,7:24])
+    #Try an NA interpolation on every column (this doesn't always work, hence the 
+    #obnoxious tryCatch for loop)  
+    for (j in 7:23){  tryCatch({ out_tmp[,j] = na.approx(out_tmp[,j])}, error = function(e) {} )}
+    return(out_tmp)
+
+  } else if (dim(res_tmp)[1] <=0  ){
+    #New population, diff,algal, and body size data
+    #mydata_inv = subset(inv_tmp, day_n >= inv_day  )#Only days after invasion
+    mydata_inv = inv_tmp
+    mydata_inv$N_res = 0
+    out1[[i]] = mydata_inv[!is.na(mydata_res$N_inv), ]
+
+    #Take the time series and interpolate missing days:
+    new_days = data.frame(day_n = seq(min(out1[[i]]$day_n),max(out1[[i]]$day_n,1) ),
+             species = out1[[i]]$species[1], replicate_number = out1[[i]]$replicate_number[1],  
+             invade_monoculture = out1[[i]]$invade_monoculture[1], 
+             temperature= out1[[i]]$temperature[1], mesocosm_id =out1[[i]]$mesocosm_id[1] )
+
+    out_tmp = new_days %>% left_join(out1[[i]][,7:24])
+    #Try an NA interpolation on every column (this doesn't always work, hence the 
+    #obnoxious tryCatch for loop)  
+    for (j in 7:23){  tryCatch({ out_tmp[,j] = na.approx(out_tmp[,j])}, error = function(e) {} )}
+    return(out_tmp)
+
+  } else {
+    #New population, diff,algal, and body size data
+    #mydata_inv = subset(inv_tmp, day_n >= inv_day  )#Only days after invasion
+    mydata_inv= inv_tmp
+    out1[[i]] = mydata_inv[!is.na(mydata_inv$N_inv) & 
+      !is.na(mydata_inv$N_res) , ]
+    
+    #Take the time series and interpolate missing days:
+    new_days = data.frame(day_n = seq(min(out1[[i]]$day_n),max(out1[[i]]$day_n,1) ),
+             species = out1[[i]]$species[1], replicate_number = out1[[i]]$replicate_number[1],  
+             invade_monoculture = out1[[i]]$invade_monoculture[1], 
+             temperature= out1[[i]]$temperature[1], mesocosm_id =out1[[i]]$mesocosm_id[1] )
+
+    out_tmp = new_days %>% left_join(out1[[i]][,7:24])
+    #Try an NA interpolation on every column (this doesn't always work, hence the 
+    #obnoxious tryCatch for loop)  
+    for (j in 7:23){  tryCatch({ out_tmp[,j] = na.approx(out_tmp[,j])}, error = function(e) {} )}
+    return(out_tmp)
+
+  } 
+
 }

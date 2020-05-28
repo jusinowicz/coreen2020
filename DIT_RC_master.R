@@ -442,6 +442,7 @@ cR_pred = rbind(cR_daph_pred,cR_dia_pred)
 lvii_pred = rbind(lvii_daph_pred, lvii_dia_pred)
 lvij_pred = rbind(lvij_daph_pred, lvij_dia_pred)
 
+
 #=============================================================================
 #Plotting for Stage 2: 
 #=============================================================================
@@ -544,6 +545,11 @@ nRsp = 2 #Algae
 nCsp = 2 #Spp 1 is Daphnia, Spp 2 is Diaphanosoma
 nPsp = 1 #This is actually 0 --> Just a dummy predator
 nspp = nRsp+nCsp+nPsp
+
+#Phenomenological coexistence conditions
+rho1 = matrix(0,6,2)
+the1 = matrix(0,6,2)
+kappa1 = matrix(0,6,2)
 
 #=============================================================================
 # Outer loop. First run to equilibrate the population dynamics
@@ -670,6 +676,14 @@ for (w in 1:nwebs){
 	# spp_prms$aii = matrix(c(0.10,0.08),1,2)
 	# spp_prms$aij = matrix(c(0.10,0.08),1,2)
 
+	#Phenomenological coexistence conditions
+	rho1[,1] = aij_all[,1]/(sqrt(aii_all[,1]*aii_all[,2]) )
+	rho1[,2] = aij_all[,2]/(sqrt(aii_all[,1]*aii_all[,2]))
+	the1[,1] = sqrt(aii_all[,1]/aii_all[,2])
+	the1[,2] = sqrt(aii_all[,2]/aii_all[,1])
+	kappa1[,1] = spp_prms$muC[1]+1
+	kappa1[,2] = spp_prms$muC[2]+1
+
 	#=============================================================================
 	# This function gives: 
 	# out 		The time series for of population growth for each species in the web
@@ -741,38 +755,286 @@ for (w in 1:nwebs){
 
 }
 
-aii_all = matrix(0,6,2)
-aij_all = matrix(0,6,2)
-ci_all = matrix(0,6,2)
-wi_all = matrix(0,6,2)
 
-for(n in 1:6){ 
-  aii_all[n,1] = abs(coef(lvii_daph[[n]])[2])
-  aii_all[n,2] = abs(coef(lvii_dia[[n]])[2])
-  aij_all[n,1] = abs(coef(lvij_daph[[n]])[2])
-  aij_all[n,2] = abs(coef(lvij_dia[[n]])[2])
-  ci_all[n,1] = abs(coef(cl_daph[[n]])[1])
-  ci_all[n,2] = abs(coef(cl_dia[[n]])[1])
-  wi_all[n,1] = abs(coef(cR_daph[[n]])[1])
-  wi_all[n,2] = abs(coef(cR_dia[[n]])[1])
+
+#=============================================================================
+# STAGE 4: Dynamic Information Theoretic analysis of real and simulated data. 
+#
+# Take both population time-series counts output by the ODEs and the actual
+# time series data and calculate Excess Entropy, Active Information Storage, 
+# and Transfer Entropy.
+# Each quantity is calculated at both the average and local level.  
+#=============================================================================
+#Variables: 
+#Set k, the block size: 
+k=2
+f1=1 #scaling term for converting fractional populations in simulations
+
+#=============================================================================
+# Variables for data collection
+#=============================================================================
+#Real data: 
+#=============================================================================
+#Main data frame per mesocosm
+out1R = vector("list",nmesos)
+
+#Dynamic information metrics calculated from the (discretized) time series 
+di_webR =  vector("list",nmesos)
+
+#Track the average transfer entropy and separable information between each pair of 
+#species as a way to build a network of information flow through the network. 
+te_webR =  vector("list",nmesos)
+si_webR = vector("list",nmesos) 
+
+#The ensemble version of the AI
+aiE_webR = vector("list",nmesos)
+
+#=============================================================================
+#Sim data: 
+#=============================================================================
+#Dynamic information metrics calculated from the (discretized) time series 
+di_webS = vector("list",nwebs)
+
+#Track the average transfer entropy and separable information between each pair of 
+#species as a way to build a network of information flow through the network. 
+te_webS = vector("list",nwebs)
+si_webS =vector("list",nwebs) 
+
+#The ensemble version of the AI
+aiE_webS = vector("list",nwebs)
+
+
+#=============================================================================
+#Real data: Loop over all mesocosms
+#=============================================================================
+for (i in 1:nmesos) {
+
+	mesosi = mesos[i]
+	out1R[[i]] = get_info_ts(m1_data_long, mesosi )
+	#Take the two-species time series
+	pop_ts = floor(f1*out1R[[i]][c("N_res","N_inv")])
+
+	nt1 = 1
+	nt2 = dim(pop_ts)[1]
+	if(nt2 <=k){ k = 1}
+
+	if(nt1 != nt2) { 
+
+	#=============================================================================
+	# This function gives:
+	# EE_mean   Average mutual information per species
+	# AI_mean   Average active information per species
+	# TE_mean   Average transfer entropy per species
+	# 
+	# EE_local    Local mutual information per species
+	# AI_local    Local active information per species
+	# TE_local    Local transfer entropy per species
+	#=============================================================================
+	di_webR[i] = list(get_info_dynamics(pop_ts = pop_ts , k=k,with_blocks=FALSE))
+
+	## This code takes the population time-series counts output by the ODEs and 
+	## calculates the average Transfer Entropy from each species to every other 
+	## species. The goal is to get an overview of the major information pathways 
+	## in the web.   
+	#=============================================================================
+	# This function gives:
+	# te_web    Average transfer entropy per species as a pairwise matrix
+	#=============================================================================
+	te_webR[i] = list( get_te_web( pop_ts = pop_ts, k=k) )
+
+	#=============================================================================
+	# This function gives:
+	# aiE_web    The AI of the entire ensemble, treated as a single time series. 
+	#=============================================================================
+	aiE_webR[i] = list( get_ais (  series1 = pop_ts, k=k, ensemble = FALSE)    )
+
+	#=============================================================================  
+	#Build these back out into a data frame that includes all of the mesocosm,
+	#treatment, and species information. 
+
+	#Add the DIT to the data frames. There will be 11 new columns. 
+	ncnames = c("N_res","N_inv","aiE","te1","te2","ee1","ee2","ai1","ai2","si1","si2",
+	  "res_spp", "inv_spp" )
+	DIT_tmp = data.frame(matrix(0,nt2,13) )
+	colnames(DIT_tmp) = ncnames
+	DIT_tmp[,1:2] = as.matrix(pop_ts)
+	DIT_tmp[(k+1):nt2,3] = aiE_webR[[i]]$local
+	DIT_tmp[(k+1):nt2,4:5] = di_webR[[i]]$te_local
+	DIT_tmp[(k*2):nt2,6:7] = di_webR[[i]]$ee_local
+	DIT_tmp[(k+1):nt2,8:9] = di_webR[[i]]$ai_local
+	DIT_tmp[(k+1):nt2,10:11] = di_webR[[i]]$si_local
+	DIT_tmp[,12] = factor( levels = levels(rspecies))
+	DIT_tmp[,13] = factor( levels = levels(rspecies))
+
+	if( out1R[[i]]$invade_monoculture[1] == "monoculture") {
+	  DIT_tmp[,12] = unique(out1R[[i]]$species)[1]
+	  DIT_tmp[,13] = unique(out1R[[i]]$species)[1]
+	} else {
+	  if (out1R[[i]]$invade_monoculture[1] == "daph invade"){
+	    DIT_tmp[,12] = (rspecies)[2]
+	    DIT_tmp[,13] = (rspecies)[1]
+	  } else {
+	    DIT_tmp[,12] = (rspecies)[1] 
+	    DIT_tmp[,13] = (rspecies)[2]
+	  }
+	}
+
+	#DIT_tmp = as.data.frame(DIT_tmp) 
+	out1R[[i]] = cbind(out1R[[i]],DIT_tmp) #%>% left_join(DIT_tmp)
+
+	}
 }
 
-aiib_all = ci_all^2*wi_all
-aijb_all = ci_all*ci_all[,2:1]*wi_all
+#Take all of the new data and combine it into one data frame: 
+m1_DIT = bind_rows(out1R, .id = "column_label")
+m1_DIT=m1_DIT %>%
+ mutate(alg_per_Nres = (10E6-algae_abundance)/N_res^2)  #"lead" lines up the result
+m1_DIT=m1_DIT %>%
+ mutate(alg_per_Ninv = (10E6-algae_abundance)/N_inv^2)  #"lead" lines up the result
+m1_DIT=m1_DIT %>%
+ mutate(alg_per_Ndiff = (10E6-algae_abundance)/lead( N-lag(N),)) 
+m1_DIT$alg_per_Nres[is.infinite(m1_DIT$alg_per_Nres)] = NA
+m1_DIT$alg_per_Ninv[is.infinite(m1_DIT$alg_per_Ninv)] = NA
+m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
 
-rho1 = matrix(0,6,2)
-rho1b = matrix(0,6,2)
-the1 = matrix(0,6,2)
-the1b = matrix(0,6,2)
 
-rho1[,1] = aij_all[,1]/(sqrt(aii_all[,1]*aii_all[,2]) )
-rho1[,2] = aij_all[,2]/(sqrt(aii_all[,1]*aii_all[,2]))
-rho1b[,1] = aijb_all[,1]/(sqrt(aiib_all[,1]*aiib_all[,2]))
-rho1b[,2] = aijb_all[,2]/(sqrt(aiib_all[,1]*aiib_all[,2]))
+#=============================================================================
+#Sim data: Loop over all temperature treatments
+#=============================================================================
+for (w in 1:nwebs){ 
 
-the1[,1] = sqrt(aii_all[,1]/aii_all[,2])
-the1[,2] = sqrt(aii_all[,2]/aii_all[,1])
-the1b[,1] = sqrt(aiib_all[,1]/aiib_all[,2])
-the1b[,2] = sqrt(aiib_all[,2]/aiib_all[,1])
+	pop_ts = ceiling(f1*out_inv1[[w]])
+	nt1 = 1
+	nt2 = dim(pop_ts)[1] 
+	if(nt2 <=k){ k = 1}
 
+	if(nt1 != nt2) { 
+
+	#=============================================================================
+	# This function gives:
+	# EE_mean   Average mutual information per species
+	# AI_mean   Average active information per species
+	# TE_mean   Average transfer entropy per species
+	# 
+	# EE_local    Local mutual information per species
+	# AI_local    Local active information per species
+	# TE_local    Local transfer entropy per species
+	#=============================================================================
+	di_webS[w] = list(get_info_dynamics(pop_ts = pop_ts , k=k,with_blocks=TRUE))
+
+	## This code takes the population time-series counts output by the ODEs and 
+	## calculates the average Transfer Entropy from each species to every other 
+	## species. The goal is to get an overview of the major information pathways 
+	## in the web.   
+	#=============================================================================
+	# This function gives:
+	# te_web    Average transfer entropy per species as a pairwise matrix
+	#=============================================================================
+	te_webS[w] = list( get_te_web( pop_ts = pop_ts, k=k) )
+
+	#=============================================================================
+	# This function gives:
+	# aiE_web    The AI of the entire ensemble, treated as a single time series. 
+	#=============================================================================
+	aiE_webS[w] = list( get_ais (  series1 = pop_ts, k=k, ensemble = TRUE)    )
+
+	}
+}
+
+#=============================================================================
+#Post-loop processing to create a single data frame for plotting and stats
+#=============================================================================
+##Recursively flatten this into a data frame. 
+mDIT_tmp = data.frame(matrix( nrow=0, ncol =34 ) ) 
+ncnames = c("Algae", "N_res","N_inv", "res_spp","inv_spp", "aiE","te1","te2", "te3","ee1","ee2",
+	"ee3","ai1","ai2","ai3","si1","si2","si3","temperature","invade_monoculture","nspp","alg_per_Nres",
+	"alg_per_Ninv","zoo","alg_perzoo","alg_per_DRes","alg_per_DInv","alg_per_Dzoo",
+	"m_alg_perRes", "m_alg_perInv", "m_alg_perzoo", "m_Daph", "m_zoo","replicate_number" )
+colnames(mDIT_tmp) = ncnames
+#mesocosms = factor(c("A","B")) #A is Daphnia invader, B is Daphnia resident
+nspp = factor(c(1,2)) #1 is the pre-invasion phase, 2 is post-invasion phase
+for (f in 1:nwebs){
+	spp_prms = out1[[f]]$spp_prms
+	DIT_tmp = data.frame(matrix(0,nt2,34 ))
+	colnames(DIT_tmp) = ncnames
+
+    DIT_tmp[,1] = as.matrix(out_inv1[[f]][,2])
+    DIT_tmp[1:(nt2/2),2] = as.matrix(out_inv1[[f]][1:(nt2/2),4]) #First Daph as invader
+    DIT_tmp[1:(nt2/2),3] = as.matrix(out_inv1[[f]][1:(nt2/2),3])
+    DIT_tmp[(nt2/2+1):nt2,2] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,3]) #Second Dia as invader
+    DIT_tmp[(nt2/2+1):nt2,3] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,4])
+    
+    DIT_tmp[,4] = factor( levels = levels(rspecies)) #Invader/resident IDs
+    DIT_tmp[,5] = factor( levels = levels(rspecies))
+	DIT_tmp[1:(nt2/2),4] = (rspecies)[2]
+    DIT_tmp[1:(nt2/2),5] = (rspecies)[1]
+   	DIT_tmp[(nt2/2+1):nt2,4] = (rspecies)[1]
+    DIT_tmp[(nt2/2+1):nt2,5] = (rspecies)[2]
+
+    DIT_tmp[(k+1):nt2,6] = aiE_webS[[f]]$local
+    DIT_tmp[(k+1):nt2,7:9] = di_webS[[f]]$te_local[,2:4]
+    DIT_tmp[(k*2):nt2,10:12] = di_webS[[f]]$ee_local[,2:4]
+    DIT_tmp[(k+1):nt2,13:15] = di_webS[[f]]$ai_local[,2:4]
+    DIT_tmp[(k+1):nt2,16:18] = di_webS[[f]]$si_local[,2:4]
+    DIT_tmp[,19] = temps[f]
+
+    DIT_tmp[,20] = factor(levels = levels(inv_mon))
+    DIT_tmp[1:nt2/2,20] = inv_mon[2]
+    DIT_tmp[(nt2/2+1):nt2,20] = inv_mon[3]
+
+    spp1 = c(1:(nt2/4),(nt2/2+1):(nt2/2+nt2/4))
+    spp2 = c((nt2/4+1):(nt2/2),(nt2/2+nt2/4+1):nt2)
+    DIT_tmp[,21] = factor(levels = levels(nspp))
+    DIT_tmp[spp1,21] = nspp[1]
+    DIT_tmp[spp2,21] = nspp[2]
+
+	#Resident
+    DIT_tmp[1:(nt2/2),22] = (spp_prms$cC[1]*DIT_tmp$Algae[1:(nt2/2)])/DIT_tmp[1:(nt2/2),2]#Daph
+	DIT_tmp[(nt2/2+1):nt2,22] = (spp_prms$cC[2]*DIT_tmp$Algae[(nt2/2+1):nt2])/DIT_tmp[(nt2/2+1):nt2,2]#Dia
+	DIT_tmp[,22][is.infinite(DIT_tmp$alg_perDaph)] = 0
+
+	#Invader
+	DIT_tmp[1:(nt2/2),23] = (spp_prms$cC[2]*DIT_tmp$Algae[1:(nt2/2)])/DIT_tmp[1:(nt2/2),3]#Dia
+	DIT_tmp[(nt2/2+1):nt2,23]  = (spp_prms$cC[1]*DIT_tmp$Algae[(nt2/2+1):nt2])/DIT_tmp[(nt2/2+1):nt2,3]#Daph
+	DIT_tmp[,23] [is.infinite(DIT_tmp$alg_perDia)] = 0
+
+	#Total Zoo
+	DIT_tmp[,24] = DIT_tmp$Daphnia+DIT_tmp$Diaphanosoma
+	DIT_tmp[,25] = ((spp_prms$cC[1]+spp_prms$cC[2])*DIT_tmp$Algae)/DIT_tmp$zoo
+	DIT_tmp[,25] [is.infinite(DIT_tmp$alg_perzoo)] = 0
+
+	#Delta columns: #NOTE, THESE AREN"T CORRECT YET
+
+	DIT_tmp[,26] = (spp_prms$cC[1]*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$N_res))
+	DIT_tmp[,26][is.infinite(DIT_tmp$alg_per_DDaph)] = 0
+
+	DIT_tmp[,27] = (spp_prms$cC[2]*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$N_inv))
+	DIT_tmp[,27][is.infinite(DIT_tmp$alg_per_DDia)] = 0
+
+	DIT_tmp[,28] = ((spp_prms$cC[1]+spp_prms$cC[2])*DIT_tmp$Algae)/c(NA,diff(DIT_tmp$zoo))
+	DIT_tmp[,28][is.infinite(DIT_tmp$alg_per_Dzoo)] = 0
+
+	DIT_tmp[1:(nt2/2),29] = mean(DIT_tmp$m_alg_perRes[1:(nt2/2)])
+	DIT_tmp[(nt2/2+1):nt2,29] = mean(DIT_tmp$m_alg_perRes[(nt2/2+1):nt2])
+
+	DIT_tmp[1:(nt2/2),30] = mean(DIT_tmp$m_alg_perInv[1:(nt2/2)])
+	DIT_tmp[(nt2/2+1):nt2,30] = mean(DIT_tmp$m_alg_perInv[(nt2/2+1):nt2])
+
+	DIT_tmp[,31] = mean(DIT_tmp$alg_perzoo,na.rm=T )
+	DIT_tmp[,32] = mean(DIT_tmp$N_res,na.rm=T)
+	DIT_tmp[,33] = mean(DIT_tmp$zoo,na.rm=T )
+	DIT_tmp[,34] = paste(f,DIT_tmp$res_spp,sep="")
+
+
+    DIT_tmp = as.data.frame(DIT_tmp) 
+    mDIT_tmp = rbind(mDIT_tmp,DIT_tmp)
+}
+
+#Add two time columns: time1 is absolute time from beginning of simulation, 
+#day_n is adjusted relative to the invasion event to match up with the 
+#experimental time scale
+inv_day = 28
+inv_day_n = ((tend*1/delta1+1) - inv_day )
+mDIT = cbind(time1 = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1), 
+	day_n =matrix(seq(0,(tend*2)*1/delta1+1,1)-inv_day_n,dim(mDIT_tmp)[1],1) , mDIT_tmp)
 
