@@ -685,9 +685,9 @@ for (w in 1:nwebs){
 	print(out1[[w]]$out[tl,])
 
 	#Look at basic plots on the fly: 
-	plot(out1[[w]]$out[,4],t="l",ylim=c(0,max(out1[[w]]$out[tl,3:4])))
+	plot(out1[[w]]$out[,5],t="l",ylim=c(0,max(out1[[w]]$out[tl,4:5])))
 	points(dia_tmp$day_n, dia_tmp$N)
-	lines( out1[[w]]$out[,3],col="red",t="l")
+	lines( out1[[w]]$out[,4],col="red",t="l")
 	points(daph_tmp$day_n,daph_tmp$N, col="red")
 
 	# daph_tmp = subset(mesos_daph, temperature == temps[[w]]) #Daphnia at temp
@@ -726,44 +726,20 @@ for (w in 1:nwebs){
 		
 		a_temp =rbind(a_temp, out_temp$out, out_temp2$out)
 
-
-		#Competition from competitor
-		#plot(out_temp2$out[1500:2000,(s+1)])
-		#ts1=log(out_temp2$out[1500:2000,(s+1)])
-		
-		#"Competition" from predator
-		# plot(out_temp2$out[50:300,(s+1)])
-		# ts1=log(out_temp2$out[50:300,(s+1)])
-		# ts2=1:length(ts1)
-		# summary(lm(ts1~ts2))
 	}
 
 	out_inv1 [[w]] = a_temp
 	#Look at basic plots on the fly: 
-
-	mlt1 = 1/delta1
-	plot(out_inv1 [[w]][1:(tl+1),1]*mlt1,out_inv1 [[w]][tl:(tl*2),4],t="l",ylim=c(0,max(out_inv1 [[w]][,3:4])),
-		xlim=c(0,100))
-	points(dia_tmp$day_n, dia_tmp$N)
-	lines(out_inv1 [[w]][1:(tl+1),1]*mlt1, out_inv1 [[w]][tl:(tl*2),3],col="red")
-	points(daph_tmp$day_n,daph_tmp$N, col="red")
-
-	lines(out_inv1 [[w]][1:(tl),1], out1[[w]]$out[1:(tl),4],col="green")
-	lines(out_inv1 [[w]][1:(tl),1], out1[[w]]$out[1:(tl),3],col="blue")
+	# plot(out_inv1 [[w]][30000:31000,1], out_inv1 [[w]][30000:31000,4], t="l", col="red")
+	# points(daph_tmp$day_n,daph_tmp$N, col="red")
+	# lines(out_inv1 [[w]][10000:11000,1], out_inv1 [[w]][10000:11000,5])	
+	# points(dia_tmp$day_n, dia_tmp$N)
 
 	#Look at basic plots on the fly: 
-	plot(out_inv1 [[w]][tl:(tl*2),4],t="l",ylim=c(0,max(out_inv1 [[w]][,3:4])),xlim=c(0,100))
-	points(dia_tmp$day_n, dia_tmp$N)
-	lines( out_inv1 [[w]][tl:(tl*2),3],col="red")
-	points(daph_tmp$day_n,daph_tmp$N, col="red")
+	plot(out_inv1 [[w]][,5],t="l",ylim=c(0,max(out_inv1 [[w]][,4:5])))
+	lines( out_inv1 [[w]][,4],col="red")
 
-	#Look at basic plots on the fly: 
-	plot(out_inv1 [[w]][1:1000,1]*100,out_inv1 [[w]][1:1000,4],t="l",ylim=c(0,max(out_inv1 [[w]][,3:4])))
-	points(dia_tmp$day_n, dia_tmp$N)
-	lines(out_inv1 [[w]][1:1000,1]*100, out_inv1 [[w]][1:1000,3],col="red")
-	points(daph_tmp$day_n,daph_tmp$N, col="red")
-
-
+}
 
 aii_all = matrix(0,6,2)
 aij_all = matrix(0,6,2)
