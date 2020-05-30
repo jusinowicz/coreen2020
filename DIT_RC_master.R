@@ -179,8 +179,8 @@ igr_prms = c("a1","b1","c1")
 
 #4. ***    ***
 igrij = formula (N_inv ~  a1/(1+b1*exp(c1*day_n ) ) )
-#igrij_prms = c("a1","b1","c1")
-igrij_prms = c("b1","c1") #Treat a1 as fixed 
+igrij_prms = c("a1","b1","c1")
+#igrij_prms = c("b1","c1") #Treat a1 as fixed 
 
 
 #=============================================================================
@@ -333,18 +333,22 @@ for(t in 1:ntemps) {
   	dia_tmpb=dia_tmp
   	dia_tmpb$day_n[dia_tmpb$day_n>inv_day] = dia_tmpb$day_n[dia_tmpb$day_n>inv_day]-inv_day 
 
-	igr_daph[[t]] = get_mod_fit( mod_data =daph_tmpb, mod_fit = igr, mod_prms = igr_prms,
+	test1=NULL
+	test1 = get_mod_fit( mod_data =daph_tmpb, mod_fit = igr, mod_prms = igr_prms,
 					prm_start = c(max(daph_tmpb$N,na.rm=T), 1, 0.05 ), mod_x = "day_n")
- 	if(!is.null(igr_daph[[t]])) { 
+ 	if(!is.null(test1)) { 
+ 	igr_daph[[t]] =test1
 	igr_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
 		 			day_n=igr_daph[[t]]$new_fit$day_n,  
 		 			N = igr_daph[[t]]$new_fit$N_pred )
     igr_daph_pred = rbind(igr_daph_pred, igr_daph_tmp)
 	}
 	
-	igr_dia[[t]] = get_mod_fit( mod_data =dia_tmpb, mod_fit = igr, mod_prms = igr_prms,
+	test1 = NULL
+	test1= get_mod_fit( mod_data =dia_tmpb, mod_fit = igr, mod_prms = igr_prms,
 					prm_start = c(max(dia_tmpb$N,na.rm=T), 1, 0.05 ), mod_x = "day_n")
-	if(!is.null(igr_dia[[t]])) { 
+	if(!is.null(test1)) { 
+	igr_dia[[t]] =test1
 	igr_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
 		 			day_n=igr_dia[[t]]$new_fit$day_n,  
 		 			N = igr_dia[[t]]$new_fit$N_pred )
@@ -379,20 +383,24 @@ for(t in 1:ntemps) {
 	daph_inv_tmp = get_new_inv(m1_data_long, rspecies[1], temps[t], inv_day, inv_end)
 	dia_inv_tmp = get_new_inv(m1_data_long, rspecies[2], temps[t], inv_day, inv_end )
 
-	igrij_daph[[t]] = get_mod_fit( mod_data =daph_inv_tmp, mod_fit = igrij, mod_prms = igrij_prms,
-					prm_start = c( 2, -0.05 ), mod_x = "day_n", 
-					fixed = data.frame(a1=max(daph_inv_tmp$N_inv,na.rm=T)) ) 
-	if(!is.null(igrij_daph[[t]])) { 
+	test1=NULL
+	test1 = get_mod_fit( mod_data =daph_inv_tmp, mod_fit = igrij, mod_prms = igrij_prms,
+					prm_start = c(max(daph_inv_tmp$N_inv,na.rm=T), 2, -0.05 ), mod_x = "day_n"
+					)
+	if(!is.null(test1)) { 
+	igrij_daph[[t]]=test1
 	igrij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
 		 			day_n=igrij_daph[[t]]$new_fit$day_n,  
 		 			N= igrij_daph[[t]]$new_fit$N_pred )
     igrij_daph_pred = rbind(igrij_daph_pred, igrij_daph_tmp)
 	}
 	
-	igrij_dia[[t]] = get_mod_fit( mod_data =dia_inv_tmp, mod_fit = igrij, mod_prms = igrij_prms,
-					prm_start = c( 2, -0.05 ), mod_x = "day_n",
-					fixed = data.frame(a1 = max(dia_inv_tmp$N_inv,na.rm=T)) )
+	test1=NULL
+	test1 = get_mod_fit( mod_data =dia_inv_tmp, mod_fit = igrij, mod_prms = igrij_prms,
+					prm_start = c( max(dia_inv_tmp$N_inv,na.rm=T), 2, -0.05 ), mod_x = "day_n"
+					)
 	if(!is.null(igrij_dia[[t]])) { 
+	igrij_dia[[t]] = test1
 	igrij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
 		 			day_n=igrij_dia[[t]]$new_fit$day_n,  
 		 			N= igrij_dia[[t]]$new_fit$N_pred )
@@ -430,6 +438,10 @@ for(t in 1:ntemps) {
 
 
 }
+
+#Since invasion treatment 6 was nonexistant: 
+lvij_dia[[6]]=lvij_daph[[6]]
+lvij_dia[[6]]$coefficients[1] = 1E-5 #Make it effectively nothing 
 
 #Consumption functions
 cl_plot = rbind(cl_daph_plot,cl_dia_plot)
@@ -515,7 +527,7 @@ ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2.
 #Set parameters for simulation
 #=============================================================================
 #Length and time steps of each model run
-tend = 100
+tend = 50
 delta1 = 0.01
 tl=tend/delta1+1
 
@@ -978,9 +990,9 @@ for (f in 1:nwebs){
     DIT_tmp[(k+1):nt2,16:18] = di_webS[[f]]$si_local[,2:4]
     DIT_tmp[,19] = temps[f]
 
-    DIT_tmp[,20] = factor(levels = levels(inv_mon))
-    DIT_tmp[1:nt2/2,20] = inv_mon[2]
-    DIT_tmp[(nt2/2+1):nt2,20] = inv_mon[3]
+    DIT_tmp[,20] = factor(levels = levels(invader))
+    DIT_tmp[1:nt2/2,20] = invader[2]
+    DIT_tmp[(nt2/2+1):nt2,20] = invader[3]
 
     spp1 = c(1:(nt2/4),(nt2/2+1):(nt2/2+nt2/4))
     spp2 = c((nt2/4+1):(nt2/2),(nt2/2+nt2/4+1):nt2)
@@ -1038,3 +1050,63 @@ inv_day_n = ((tend*1/delta1+1) - inv_day )
 mDIT = cbind(time1 = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1), 
 	day_n =matrix(seq(0,(tend*2)*1/delta1+1,1)-inv_day_n,dim(mDIT_tmp)[1],1) , mDIT_tmp)
 
+#=============================================================================
+#Saving
+#=============================================================================
+save(file="daphDia_DIT_1250_noVar.var", "m1_DIT","out1R","di_webR",
+	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
+	"te_webS","si_webS", "aiE_webS")
+
+
+#=============================================================================
+#Plots in combination with the real data using all data
+# m1_DIT is the real data
+# mDIT is the simulation data
+#=============================================================================
+
+m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, nspp == 2)
+
+# m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture" & temperature == 28 & inv_spp == "daphnia") #Daphnia at 28 C
+# mDIT_sub = subset(mDIT, nspp == 2 & temperature == 28 & inv_spp == "daphnia")
+
+# m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture" & temperature == 28 & inv_spp == "diaphanosoma") #Daphnia at 28 C
+# mDIT_sub = subset(mDIT, nspp == 2 & temperature == 28 & inv_spp == "diaphanosoma")
+
+
+p1= ggplot()+ 
+	  geom_line(data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+	  geom_line( data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping=aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	  geom_point(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+	  geom_point(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+	  facet_grid(temperature~invade_monoculture)+ylim(0,2E2)+xlim(20,50)
+
+p2 = ggplot()+ 
+	  geom_line(data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+	  geom_line( data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping=aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	  geom_point(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+	  geom_point(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+	  facet_grid(temperature~invade_monoculture)+ylim(0,2E2)+xlim(20,50)
+
+ggplot() + geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=ai1, color="1" )) +
+	geom_line(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =ai2,  color = "2" ) ) +
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+  	ylab("Bits (AI) ")+
+  	theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+p3 = ggplot()+ geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=alg_per_N, group = mesocosm_id,,color="1" )) +
+	geom_line(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =(alg_perDaph), color="2") )+
+	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+	xlab("Day")+
+  	ylab("Algae consumed per N ")
+
+
+gp1 = ggplotGrob(p1)
+gp2 = ggplotGrob(p2)
+gp3 = ggplotGrob(p3)
+grid.draw(rbind(gp1, gp2,gp3))
+
+
+#To save as a PDF
+pdf("./exp_v_simAll1.pdf",width = 8, height = 10)
+grid.draw(rbind(gp1, gp2,gp3))
+dev.off()

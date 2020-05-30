@@ -216,7 +216,7 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 					#dC[i] = ( (C[i] *cC[,i]*rC[i])%*%R ) * (b[[i]](times) - C[i]/Kc[i])
 					
 					#Classic resource-consumer
-					dC[i] = ( eFc[i]*(C[i] ) ) * ( (cC[,i]*rC[,i])%*%R-muC[i])
+					dC[i] = ( b[[i]](times)*eFc[i]*(C[i] ) ) * ( (cC[,i]*rC[,i])%*%R-muC[i])
 					#b[[i]](times)
 					#dC[i] = ( (C[i] )*b[[i]](times) ) * ( (cC[1,i]*rC[1,i]*R[1]+cC[2,i]*rC[2,i]*R[2])-muC[i])
 
