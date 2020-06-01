@@ -527,7 +527,7 @@ ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2.
 #Set parameters for simulation
 #=============================================================================
 #Length and time steps of each model run
-tend = 50
+tend = 20
 delta1 = 0.01
 tl=tend/delta1+1
 
@@ -630,6 +630,8 @@ for (w in 1:nwebs){
   	aij_all[w,1] = abs(coef(lvij_daph[[w]])[1])
   	aij_all[w,2] = abs(coef(lvij_dia[[w]])[1])
 
+  	if(w<5){aij_all[w,2]=2*aij_all[w,2]}
+
 	# The trick now is to figure out how to adjust the RC alphas to match the phenomenological
 	# alphas by determining an appropriate R1 and the properties of a fictitious resource 2.  
 	# The approach here starts by assuming aii (for Daphnia) is correct and building from there.
@@ -728,11 +730,11 @@ for (w in 1:nwebs){
 	# Inner loop: Mutual invasion:remove each species and track the dynamics
 	#=============================================================================
 	a_temp = NULL
-	for (s in 1:2){
+	for (s in 3:4){
 
 		out_temp =NULL
 		out_temp2 =NULL
-		inv_spp = s+1
+		inv_spp = s
 		winit =  out1[[w]]$out[tl,2:(nspp+1)]
 		winit[inv_spp] = 0
 
@@ -957,6 +959,9 @@ for (w in 1:nwebs){
 #Post-loop processing to create a single data frame for plotting and stats
 #=============================================================================
 ##Recursively flatten this into a data frame. 
+# In order to match the real data, ai1 is always the resident and ai2 is the invader 
+# (and follow that pattern for all of the DIT metrics). "3" corresponds to the algae. 
+# 
 mDIT_tmp = data.frame(matrix( nrow=0, ncol =34 ) ) 
 ncnames = c("Algae", "N_res","N_inv", "res_spp","inv_spp", "aiE","te1","te2", "te3","ee1","ee2",
 	"ee3","ai1","ai2","ai3","si1","si2","si3","temperature","invade_monoculture","nspp","alg_per_Nres",
@@ -965,16 +970,18 @@ ncnames = c("Algae", "N_res","N_inv", "res_spp","inv_spp", "aiE","te1","te2", "t
 colnames(mDIT_tmp) = ncnames
 #mesocosms = factor(c("A","B")) #A is Daphnia invader, B is Daphnia resident
 nspp = factor(c(1,2)) #1 is the pre-invasion phase, 2 is post-invasion phase
+nt21 = length(seq(0,tend,delta1))
+nt22=nt2-k
 for (f in 1:nwebs){
 	spp_prms = out1[[f]]$spp_prms
 	DIT_tmp = data.frame(matrix(0,nt2,34 ))
 	colnames(DIT_tmp) = ncnames
 
     DIT_tmp[,1] = as.matrix(out_inv1[[f]][,2])
-    DIT_tmp[1:(nt2/2),2] = as.matrix(out_inv1[[f]][1:(nt2/2),4]) #First Daph as invader
-    DIT_tmp[1:(nt2/2),3] = as.matrix(out_inv1[[f]][1:(nt2/2),3])
-    DIT_tmp[(nt2/2+1):nt2,2] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,3]) #Second Dia as invader
-    DIT_tmp[(nt2/2+1):nt2,3] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,4])
+    DIT_tmp[1:(nt2/2),2] = as.matrix(out_inv1[[f]][1:(nt2/2),5]) #First Daph as invader
+    DIT_tmp[1:(nt2/2),3] = as.matrix(out_inv1[[f]][1:(nt2/2),4])
+    DIT_tmp[(nt2/2+1):nt2,2] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,4]) #Second Dia as invader
+    DIT_tmp[(nt2/2+1):nt2,3] = as.matrix(out_inv1[[f]][(nt2/2+1):nt2,5])
     
     DIT_tmp[,4] = factor( levels = levels(rspecies)) #Invader/resident IDs
     DIT_tmp[,5] = factor( levels = levels(rspecies))
@@ -984,10 +991,26 @@ for (f in 1:nwebs){
     DIT_tmp[(nt2/2+1):nt2,5] = (rspecies)[2]
 
     DIT_tmp[(k+1):nt2,6] = aiE_webS[[f]]$local
-    DIT_tmp[(k+1):nt2,7:9] = di_webS[[f]]$te_local[,2:4]
-    DIT_tmp[(k*2):nt2,10:12] = di_webS[[f]]$ee_local[,2:4]
-    DIT_tmp[(k+1):nt2,13:15] = di_webS[[f]]$ai_local[,2:4]
-    DIT_tmp[(k+1):nt2,16:18] = di_webS[[f]]$si_local[,2:4]
+
+    #Because resident corresponds to te1 (ai1, etc.), and which species is 
+    #resident switches:
+    DIT_tmp[ (k+1):(nt21*2),7:8] = di_webS[[f]]$te_local[1:(nt21*2-k),5:4]
+    DIT_tmp[ (nt21*2+k+1):(nt21*4),7:8] = di_webS[[f]]$te_local[(nt21*2+1):(nt21*4-k),4:5]
+    DIT_tmp[(k+1):(nt2), 9 ] = di_webS[[f]]$te_local[,2] #Algae
+
+	DIT_tmp[ (k+1):(nt21*2-k),10:11] = di_webS[[f]]$ee_local[1:(nt21*2-2*k),5:4]
+    DIT_tmp[ (nt21*2+1):(nt21*4-2*k),10:11] = di_webS[[f]]$ee_local[(nt21*2+1):(nt21*4-2*k),4:5]
+    DIT_tmp[ (k*2):(nt2), 12 ] = di_webS[[f]]$ee_local[,2] #Algae
+
+  	DIT_tmp[ (k+1):(nt21*2),13:14] = di_webS[[f]]$ai_local[1:(nt21*2-k),5:4]
+    DIT_tmp[ (nt21*2+k+1):(nt21*4),13:14] = di_webS[[f]]$ai_local[(nt21*2+1):(nt21*4-k),4:5]
+    DIT_tmp[(k+1):(nt2), 15 ] = di_webS[[f]]$ai_local[,2] #Algae
+
+  	DIT_tmp[ (k+1):(nt21*2),16:17] = di_webS[[f]]$si_local[1:(nt21*2-k),5:4]
+    DIT_tmp[ (nt21*2+k+1):(nt21*4),16:17] = di_webS[[f]]$si_local[(nt21*2+1):(nt21*4-k),4:5]
+    DIT_tmp[(k+1):(nt2), 18 ] = di_webS[[f]]$si_local[,2] #Algae
+
+    #Temperatures
     DIT_tmp[,19] = temps[f]
 
     DIT_tmp[,20] = factor(levels = levels(invader))
@@ -1053,7 +1076,7 @@ mDIT = cbind(time1 = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1),
 #=============================================================================
 #Saving
 #=============================================================================
-save(file="daphDia_DIT_1250_noVar.var", "m1_DIT","out1R","di_webR",
+save(file="daphDia_DIT_1220_nVar.var", "m1_DIT","out1R","di_webR",
 	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
 	"te_webS","si_webS", "aiE_webS")
 
@@ -1074,31 +1097,39 @@ mDIT_sub = subset(mDIT, nspp == 2)
 # mDIT_sub = subset(mDIT, nspp == 2 & temperature == 28 & inv_spp == "diaphanosoma")
 
 
+
 p1= ggplot()+ 
-	  geom_line(data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
-	  geom_line( data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping=aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	  geom_point(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
-	  geom_point(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
-	  facet_grid(temperature~invade_monoculture)+ylim(0,2E2)+xlim(20,50)
+		geom_line(data=mDIT_sub, mapping= aes(x = time1-tend+1, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+		facet_grid(temperature~invade_monoculture)+ylim(0,2E2) +xlim(0,30) +
+		scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		ylab("Population")+
+		xlab("Day")+
+		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+
 
 p2 = ggplot()+ 
-	  geom_line(data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
-	  geom_line( data=mDIT_sub[mDIT_sub$day_n>0 & mDIT_sub$day_n<100,], mapping=aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	  geom_point(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
-	  geom_point(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
-	  facet_grid(temperature~invade_monoculture)+ylim(0,2E2)+xlim(20,50)
+		geom_line(data=mDIT_sub, mapping= aes(x = time1-tend+1, y =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+		facet_grid(temperature~invade_monoculture) +xlim(0,30)    +
+		scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		ylab("Bits (AI) ")+
+		xlab("Day")+
+		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
 
-ggplot() + geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=ai1, color="1" )) +
-	geom_line(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =ai2,  color = "2" ) ) +
-	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
-  	ylab("Bits (AI) ")+
-  	theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
-p3 = ggplot()+ geom_line(data=m1_DIT_sub, mapping= aes(x= (day_n-min(day_n)+1), y=alg_per_N, group = mesocosm_id,,color="1" )) +
-	geom_line(data= mDIT_sub[mDIT_sub$time<3.5,], mapping= aes(x = time*100, y =(alg_perDaph), color="2") )+
-	scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
-	xlab("Day")+
-  	ylab("Algae consumed per N ")
-
+p3 = ggplot()+ 
+		geom_line(data=mDIT_sub, mapping= aes(x = time1-tend+1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+		facet_grid(temperature~invade_monoculture) +ylim(0,2E6) +xlim(0,30) +
+		scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		xlab("Day")+
+		ylab("Algae consumed per N ")
 
 gp1 = ggplotGrob(p1)
 gp2 = ggplotGrob(p2)
@@ -1110,3 +1141,18 @@ grid.draw(rbind(gp1, gp2,gp3))
 pdf("./exp_v_simAll1.pdf",width = 8, height = 10)
 grid.draw(rbind(gp1, gp2,gp3))
 dev.off()
+
+#=============================================================================
+m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") 
+mDIT_sub = subset(mDIT, nspp == 2)
+
+m1_DIT_sub$res_spp = revalue(m1_DIT_sub$res_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
+m1_DIT_sub$inv_spp = revalue(m1_DIT_sub$inv_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
+
+
+ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)  +ylim(0,8E4)

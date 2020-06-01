@@ -217,14 +217,13 @@ food_web_dynamics = function (spp_list = c(1,1,1), spp_prms = NULL, tend = 1000,
 					
 					#Classic resource-consumer
 					dC[i] = ( b[[i]](times)*eFc[i]*(C[i] ) ) * ( (cC[,i]*rC[,i])%*%R-muC[i])
-					#b[[i]](times)
 					#dC[i] = ( (C[i] )*b[[i]](times) ) * ( (cC[1,i]*rC[1,i]*R[1]+cC[2,i]*rC[2,i]*R[2])-muC[i])
 
 					#Classic resource-consumer, solved LV version
 					#dC[i] = C[i]* (b[[i]](times)  - t(cC[,i]^2*rC[,i])%*%(Kr/rR)*C[i] - t(cC[,i]*rC[,i]*cC[,-i])%*%(Kr/rR)*C[-i] )
 
 					#LV with phenomenological coefficients
-					#dC[i] = C[i]* (muC - aii[i]*C[i] - aij[i]*C[-i] )
+					#dC[i] = C[i]* (1 - aii[i]*C[i] - aij[i]*C[-i] )
 					
 					#print(paste("aii ", aii[i], " and aij ", aij[i]))
 					#Etc
