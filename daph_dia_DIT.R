@@ -176,7 +176,7 @@ for (i in 1:nmesos) {
   res_tmp = res_tmp %>%
       mutate(Ndiff_alg = (lag(algae_cells_mL)- algae_abundance ) )  #"lead" lines up the result
 
-  res_tmp$Ndiff_res[res_tmp$day_n == max(res_tmp$day_n )] =NA #Remove last day
+  res_tmp$Ndiff_res[res_tmp$day_n == max(res_tmp$day_n,na.rm=T )] =NA #Remove last day
   res_tmp = res_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step
   res_tmp$tdiff[res_tmp$tdiff<0] = 1 #Remove negative time steplag(N)s
   res_tmp = res_tmp %>% mutate(N_res = N)
@@ -198,7 +198,7 @@ for (i in 1:nmesos) {
   inv_tmp = inv_tmp %>%
       mutate(Ndiff_alg = (lag(algae_cells_mL)- algae_abundance) )  #"lead" lines up the result
 
-  inv_tmp$Ndiff_inv[inv_tmp$day_n == max(inv_tmp$day_n )] =NA #Remove last day
+  inv_tmp$Ndiff_inv[inv_tmp$day_n == max(inv_tmp$day_n,na.rm=T )] =NA #Remove last day
   inv_tmp = inv_tmp %>% mutate(tdiff =day_n-lag(day_n)) #Size of time step 
   inv_tmp = inv_tmp %>% mutate(N_inv = N)
   colnames(inv_tmp)[colnames(inv_tmp)=="zooplankton_length_cm"] = "zooplankton_length_cm_inv"

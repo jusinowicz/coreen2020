@@ -1156,3 +1156,12 @@ ggplot()+
 	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
 	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	facet_grid(temperature~invade_monoculture)  +ylim(0,8E4)
+
+ggplot()+ 
+
+  geom_point( aes(y = ai1, x =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_point( aes(y = ai1, x =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  geom_point( aes(y = ai2, x =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+  geom_point( aes(y = ai2, x =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+  facet_grid(temperature~invade_monoculture)
+
