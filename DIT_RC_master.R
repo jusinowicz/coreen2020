@@ -825,6 +825,7 @@ for (i in 1:nmesos) {
 
 	mesosi = mesos[i]
 	out1R[[i]] = get_info_ts(m1_data_long, mesosi )
+	ti = which(temps == unique(out1R[[i]]$temperature)) #Get the temperature index
 	#Take the two-species time series
 	pop_ts = floor(f1*out1R[[i]][c("N_res","N_inv")])
 
@@ -868,8 +869,8 @@ for (i in 1:nmesos) {
 
 	#Add the DIT to the data frames. There will be 11 new columns. 
 	ncnames = c("N_res","N_inv","aiE","te1","te2","ee1","ee2","ai1","ai2","si1","si2",
-	  "res_spp", "inv_spp" )
-	DIT_tmp = data.frame(matrix(0,nt2,13) )
+	  "res_spp", "inv_spp", "res_K", "inv_K" )
+	DIT_tmp = data.frame(matrix(0,nt2,15) )
 	colnames(DIT_tmp) = ncnames
 	DIT_tmp[,1:2] = as.matrix(pop_ts)
 	DIT_tmp[(k+1):nt2,3] = aiE_webR[[i]]$local
@@ -881,17 +882,33 @@ for (i in 1:nmesos) {
 	DIT_tmp[,13] = factor( levels = levels(rspecies))
 
 	if( out1R[[i]]$invade_monoculture[1] == "monoculture") {
-	  DIT_tmp[,12] = unique(out1R[[i]]$species)[1]
-	  DIT_tmp[,13] = unique(out1R[[i]]$species)[1]
+		DIT_tmp[,12] = unique(out1R[[i]]$species)[1]
+		DIT_tmp[,13] = unique(out1R[[i]]$species)[1]
+		
+		#Add the carrying capacity from the fitted IGR
+		t1 = as.character(unique(out1R[[i]]$species)[1])
+		if(length(grep("daph",t1)) >0 ) { 
+			DIT_tmp[,14] = coef(igr_daph[[ti]]$fit_mod)["a1"]
+			DIT_tmp[,15] = coef(igr_daph[[ti]]$fit_mod)["a1"]
+		} else{ 
+			DIT_tmp[,14] = coef(igr_dia[[ti]]$fit_mod)["a1"]
+			DIT_tmp[,15] = coef(igr_dia[[ti]]$fit_mod)["a1"]
+		}
 	} else {
 	  if (out1R[[i]]$invade_monoculture[1] == "daph invade"){
-	    DIT_tmp[,12] = (rspecies)[2]
-	    DIT_tmp[,13] = (rspecies)[1]
+		DIT_tmp[,12] = (rspecies)[2]
+		DIT_tmp[,13] = (rspecies)[1]
+		DIT_tmp[,14] = coef(igr_dia[[ti]]$fit_mod)["a1"]
+		DIT_tmp[,15] = coef(igr_daph[[ti]]$fit_mod)["a1"]
 	  } else {
 	    DIT_tmp[,12] = (rspecies)[1] 
 	    DIT_tmp[,13] = (rspecies)[2]
+	   	DIT_tmp[,14] = coef(igr_daph[[ti]]$fit_mod)["a1"]
+	  	DIT_tmp[,15] = coef(igr_dia[[ti]]$fit_mod)["a1"]
 	  }
 	}
+
+	DIT_tmp[,14] = 
 
 	#DIT_tmp = as.data.frame(DIT_tmp) 
 	out1R[[i]] = cbind(out1R[[i]],DIT_tmp) #%>% left_join(DIT_tmp)
@@ -966,7 +983,7 @@ mDIT_tmp = data.frame(matrix( nrow=0, ncol =34 ) )
 ncnames = c("Algae", "N_res","N_inv", "res_spp","inv_spp", "aiE","te1","te2", "te3","ee1","ee2",
 	"ee3","ai1","ai2","ai3","si1","si2","si3","temperature","invade_monoculture","nspp","alg_per_Nres",
 	"alg_per_Ninv","zoo","alg_perzoo","alg_per_DRes","alg_per_DInv","alg_per_Dzoo",
-	"m_alg_perRes", "m_alg_perInv", "m_alg_perzoo", "m_Daph", "m_zoo","replicate_number" )
+	"m_alg_perRes", "m_alg_perInv", "m_alg_perzoo", "res_K", "inv_K","replicate_number" )
 colnames(mDIT_tmp) = ncnames
 #mesocosms = factor(c("A","B")) #A is Daphnia invader, B is Daphnia resident
 nspp = factor(c(1,2)) #1 is the pre-invasion phase, 2 is post-invasion phase
@@ -1026,17 +1043,18 @@ for (f in 1:nwebs){
 	#Resident
     DIT_tmp[1:(nt2/2),22] = (spp_prms$cC[1]*DIT_tmp$Algae[1:(nt2/2)])/DIT_tmp[1:(nt2/2),2]#Daph
 	DIT_tmp[(nt2/2+1):nt2,22] = (spp_prms$cC[2]*DIT_tmp$Algae[(nt2/2+1):nt2])/DIT_tmp[(nt2/2+1):nt2,2]#Dia
-	DIT_tmp[,22][is.infinite(DIT_tmp$alg_perDaph)] = 0
+	DIT_tmp[,22][is.infinite(DIT_tmp$alg_perDaph)] = NA
 
 	#Invader
 	DIT_tmp[1:(nt2/2),23] = (spp_prms$cC[2]*DIT_tmp$Algae[1:(nt2/2)])/DIT_tmp[1:(nt2/2),3]#Dia
 	DIT_tmp[(nt2/2+1):nt2,23]  = (spp_prms$cC[1]*DIT_tmp$Algae[(nt2/2+1):nt2])/DIT_tmp[(nt2/2+1):nt2,3]#Daph
-	DIT_tmp[,23] [is.infinite(DIT_tmp$alg_perDia)] = 0
+	DIT_tmp[,23] [is.infinite(DIT_tmp$alg_perDia)] = NA
 
 	#Total Zoo
 	DIT_tmp[,24] = DIT_tmp$Daphnia+DIT_tmp$Diaphanosoma
 	DIT_tmp[,25] = ((spp_prms$cC[1]+spp_prms$cC[2])*DIT_tmp$Algae)/DIT_tmp$zoo
-	DIT_tmp[,25] [is.infinite(DIT_tmp$alg_perzoo)] = 0
+	DIT_tmp[,25] [is.infinite(DIT_tmp$alg_perzoo)] = NA
+
 
 	#Delta columns: #NOTE, THESE AREN"T CORRECT YET
 
@@ -1056,10 +1074,13 @@ for (f in 1:nwebs){
 	DIT_tmp[(nt2/2+1):nt2,30] = mean(DIT_tmp$m_alg_perInv[(nt2/2+1):nt2])
 
 	DIT_tmp[,31] = mean(DIT_tmp$alg_perzoo,na.rm=T )
-	DIT_tmp[,32] = mean(DIT_tmp$N_res,na.rm=T)
-	DIT_tmp[,33] = mean(DIT_tmp$zoo,na.rm=T )
+	
+	DIT_tmp[1:(nt2/2),32] = mean(DIT_tmp$N_res,na.rm=T)
+	DIT_tmp[1:(nt2/2),33] = mean(DIT_tmp$N_inv,na.rm=T)
+	DIT_tmp[(nt2/2+1):nt2,32] = mean(DIT_tmp$N_res,na.rm=T)
+	DIT_tmp[(nt2/2+1):nt2,33] = mean(DIT_tmp$N_inv,na.rm=T)
+	
 	DIT_tmp[,34] = paste(f,DIT_tmp$res_spp,sep="")
-
 
     DIT_tmp = as.data.frame(DIT_tmp) 
     mDIT_tmp = rbind(mDIT_tmp,DIT_tmp)
@@ -1158,10 +1179,37 @@ ggplot()+
 	facet_grid(temperature~invade_monoculture)  +ylim(0,8E4)
 
 ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(y = N_res, x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(y = N_inv, x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(y = N_res, x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(y = N_inv, x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)  +ylim(0,5E2)
 
-  geom_point( aes(y = ai1, x =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
-  geom_point( aes(y = ai1, x =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
-  geom_point( aes(y = ai2, x =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
-  geom_point( aes(y = ai2, x =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
-  facet_grid(temperature~invade_monoculture)
+
+ggplot()+ 
+	geom_boxplot( data=mDIT_sub,mapping= aes(y = alg_per_Nres, x =ai1, color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	#geom_boxplot( data=mDIT_sub, shape = 0, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_boxplot( data=m1_DIT_sub, mapping= aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	#geom_boxplot( data=m1_DIT_sub, shape = 18, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)  +ylim(0,8E4)
+
+m1_DIT_sub = subset(m1_DIT, species == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, inv_spp == "daphnia" & temperature == 28 & nspp=2) #Daphnia invasion 
+
+ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = ai2, y =alg_per_Nres,  color = time1))
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = ai2, y =alg_per_Ninv,  color = time1)) +  , group = interaction(inv_spp,replicate_number) ) )
+
+#=============================================================================
+m1_DIT_sub = subset(m1_DIT, invade_monoculture == "monoculture"& temperature == 28) 
+mDIT_sub = subset(mDIT, nspp == 1& temperature == 28)
+
+ggplot()+ 
+		geom_line(data=mDIT_sub, mapping= aes(x = time1, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		ylab("Population")+
+		xlab("Day")+
+		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+
 
