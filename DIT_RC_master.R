@@ -581,7 +581,7 @@ for (w in 1:nwebs){
 	#Random algal/consumer fluctuations. 
 	#Algae
 	c1 = 1 #10E6
-	amp1 = 0.25 #100000 #1/exp(1)
+	amp1 = 1E-5# 0.25 #100000 #1/exp(1)
 	spp_prms
 
 	############################
@@ -598,7 +598,7 @@ for (w in 1:nwebs){
 	Kc_sd = matrix(c(sqrt(var(daph_tmp_a$N,na.rm=T)),sqrt(var(dia_tmp_a$N,na.rm=T))), nCsp, 1)
 	
 	c2 = 1
-	amp2 = mean(spp_prms$Kc/Kc_sd) #Take an average coefficient of variation. 
+	amp2 = 1E-5# mean(spp_prms$Kc/Kc_sd) #Take an average coefficient of variation. 
 	res_R = c(amp1,c1,amp2,c2)
 
 	
@@ -1015,21 +1015,21 @@ for (f in 1:nwebs){
 
     #Because resident corresponds to te1 (ai1, etc.), and which species is 
     #resident switches:
-    DIT_tmp[ (k+1):(nt21*2),7:8] = di_webS[[f]]$te_local[1:(nt21*2-k),5:4]
-    DIT_tmp[ (nt21*2+k+1):(nt21*4),7:8] = di_webS[[f]]$te_local[(nt21*2+1):(nt21*4-k),4:5]
-    DIT_tmp[(k+1):(nt2), 9 ] = di_webS[[f]]$te_local[,2] #Algae
+    DIT_tmp[ (k+1):(nt21*2),7:8] = di_webS[[f]]$te_local[1:(nt21*2-k),4:3]
+    DIT_tmp[ (nt21*2+k+1):(nt21*4),7:8] = di_webS[[f]]$te_local[(nt21*2+1):(nt21*4-k),3:4]
+    DIT_tmp[(k+1):(nt2), 9 ] = di_webS[[f]]$te_local[,1] #Algae
 
-	DIT_tmp[ (k+1):(nt21*2-k),10:11] = di_webS[[f]]$ee_local[1:(nt21*2-2*k),5:4]
-    DIT_tmp[ (nt21*2+1):(nt21*4-2*k),10:11] = di_webS[[f]]$ee_local[(nt21*2+1):(nt21*4-2*k),4:5]
-    DIT_tmp[ (k*2):(nt2), 12 ] = di_webS[[f]]$ee_local[,2] #Algae
+	DIT_tmp[ (k+1):(nt21*2-k),10:11] = di_webS[[f]]$ee_local[1:(nt21*2-2*k),4:3]
+    DIT_tmp[ (nt21*2+1):(nt21*4-2*k),10:11] = di_webS[[f]]$ee_local[(nt21*2+1):(nt21*4-2*k),3:4]
+    DIT_tmp[ (k*2):(nt2), 12 ] = di_webS[[f]]$ee_local[,1] #Algae
 
-  	DIT_tmp[ (k+1):(nt21*2),13:14] = di_webS[[f]]$ai_local[1:(nt21*2-k),5:4]
-    DIT_tmp[ (nt21*2+k+1):(nt21*4),13:14] = di_webS[[f]]$ai_local[(nt21*2+1):(nt21*4-k),4:5]
-    DIT_tmp[(k+1):(nt2), 15 ] = di_webS[[f]]$ai_local[,2] #Algae
+  	DIT_tmp[ (k+1):(nt21*2),13:14] = di_webS[[f]]$ai_local[1:(nt21*2-k),4:3]
+    DIT_tmp[ (nt21*2+k+1):(nt21*4),13:14] = di_webS[[f]]$ai_local[(nt21*2+1):(nt21*4-k),3:4]
+    DIT_tmp[(k+1):(nt2), 15 ] = di_webS[[f]]$ai_local[,1] #Algae
 
-  	DIT_tmp[ (k+1):(nt21*2),16:17] = di_webS[[f]]$si_local[1:(nt21*2-k),5:4]
-    DIT_tmp[ (nt21*2+k+1):(nt21*4),16:17] = di_webS[[f]]$si_local[(nt21*2+1):(nt21*4-k),4:5]
-    DIT_tmp[(k+1):(nt2), 18 ] = di_webS[[f]]$si_local[,2] #Algae
+  	DIT_tmp[ (k+1):(nt21*2),16:17] = di_webS[[f]]$si_local[1:(nt21*2-k),4:3]
+    DIT_tmp[ (nt21*2+k+1):(nt21*4),16:17] = di_webS[[f]]$si_local[(nt21*2+1):(nt21*4-k),3:4]
+    DIT_tmp[(k+1):(nt2), 18 ] = di_webS[[f]]$si_local[,1] #Algae
 
     #Temperatures
     DIT_tmp[,19] = temps[f]
@@ -1107,7 +1107,7 @@ mDIT = cbind(time1 = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1),
 #=============================================================================
 #Saving
 #=============================================================================
-save(file="daphDia_DIT_1220_nVar.var", "m1_DIT","out1R","di_webR",
+save(file="daphDia_DIT_1220_NoVar.var", "m1_DIT","out1R","di_webR",
 	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
 	"te_webS","si_webS", "aiE_webS")
 
@@ -1181,14 +1181,16 @@ m1_DIT_sub$res_spp = revalue(m1_DIT_sub$res_spp, c("daphnia" = "daphnia_E", "dia
 m1_DIT_sub$inv_spp = revalue(m1_DIT_sub$inv_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
 
 
+#Consumption vs. complexity 1
 ggplot()+ 
 	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
 	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
 	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	facet_grid(temperature~invade_monoculture)  +ylim(0,8E4)
-	+ylim(0,0.001)
+	#+ylim(0,0.001)
 
+#Consumption vs. complexity 2
 ggplot()+ 
 	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = aiE, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
 	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
@@ -1196,25 +1198,39 @@ ggplot()+
 	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	facet_grid(temperature~invade_monoculture)  +ylim(0,8E4)
 
+
+#Distance from Equilbrium vs. complexity 1
+ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(y = (N_res-res_K), x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(y = (N_inv-inv_K), x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(y =  (N_res-res_K), x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(y = (N_inv-inv_K), x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)  +ylim(-300,300) +xlim(-5,15)
+
+#Distance from Equilbrium vs. complexity 2
+ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(y = (N_res-res_K), x =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(y = (N_inv-inv_K), x =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(y =  (N_res-res_K), x =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(y = (N_inv-inv_K), x =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)  +ylim(-300,300) +xlim(-5,15)
+
+#Consumption vs. distance from Equilibrium -- this gives such a nice smooth fit!
+ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = (N_res-res_K), y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = (N_inv-inv_K), y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x =  (N_res-res_K), y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = (N_inv-inv_K), y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)   +ylim(0,8E4)
+
+
+
 ggplot()+ 
 	geom_point( data=mDIT_sub, shape = 0, mapping= aes(y = N_res, x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
 	geom_point( data=mDIT_sub, shape = 0, mapping=aes(y = N_inv, x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(y = N_res, x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
 	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(y = N_inv, x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	facet_grid(temperature~invade_monoculture)  +ylim(0,5E2)
-
-ggplot()+ 
-	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = abs(N_res-res_K), y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = abs(N_inv-inv_K), y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x =  abs(N_res-res_K), y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = abs(N_inv-inv_K), y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	facet_grid(temperature~invade_monoculture)   +ylim(0,8E4)
-ggplot()+ 
-	geom_point( data=mDIT_sub, shape = 0, mapping= aes(y = abs(N_res-res_K), x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	geom_point( data=mDIT_sub, shape = 0, mapping=aes(y = abs(N_inv-inv_K), x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(y =  abs(N_res-res_K), x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(y = abs(N_inv-inv_K), x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	facet_grid(temperature~invade_monoculture)  +ylim(-00,300) +xlim(-5,15)
 
 ggplot()+ 
 	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = ai1, y =alg_perzoo,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
