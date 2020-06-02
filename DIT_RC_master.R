@@ -924,9 +924,13 @@ m1_DIT=m1_DIT %>%
  mutate(alg_per_Ninv = (10E6-algae_abundance)/N_inv^2)  #"lead" lines up the result
 m1_DIT=m1_DIT %>%
  mutate(alg_per_Ndiff = (10E6-algae_abundance)/lead( N-lag(N),)) 
+m1_DIT=m1_DIT %>%
+ mutate(alg_perzoo = (10E6-algae_abundance)/(N_inv+N_res)^2)  #"lead" lines up the result
+
 m1_DIT$alg_per_Nres[is.infinite(m1_DIT$alg_per_Nres)] = NA
 m1_DIT$alg_per_Ninv[is.infinite(m1_DIT$alg_per_Ninv)] = NA
 m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
+m1_DIT$alg_perzoo[is.infinite(m1_DIT$alg_perzoo)] = NA
 
 
 #=============================================================================
@@ -934,7 +938,7 @@ m1_DIT$alg_per_Ndiff[is.infinite(m1_DIT$alg_per_Ndiff)] = NA
 #=============================================================================
 for (w in 1:nwebs){ 
 
-	pop_ts = ceiling(f1*out_inv1[[w]])
+	pop_ts = ceiling(f1*out_inv1[[w]][,2:nspp])
 	nt1 = 1
 	nt2 = dim(pop_ts)[1] 
 	if(nt2 <=k){ k = 1}
@@ -967,7 +971,7 @@ for (w in 1:nwebs){
 	# This function gives:
 	# aiE_web    The AI of the entire ensemble, treated as a single time series. 
 	#=============================================================================
-	aiE_webS[w] = list( get_ais (  series1 = pop_ts, k=k, ensemble = TRUE)    )
+	aiE_webS[w] = list( get_ais (  series1 = pop_ts[,3:4], k=k, ensemble = TRUE)    )
 
 	}
 }
@@ -1051,7 +1055,7 @@ for (f in 1:nwebs){
 	DIT_tmp[,23] [is.infinite(DIT_tmp$alg_perDia)] = NA
 
 	#Total Zoo
-	DIT_tmp[,24] = DIT_tmp$Daphnia+DIT_tmp$Diaphanosoma
+	DIT_tmp[,24] = DIT_tmp$N_res+DIT_tmp$N_inv
 	DIT_tmp[,25] = ((spp_prms$cC[1]+spp_prms$cC[2])*DIT_tmp$Algae)/DIT_tmp$zoo
 	DIT_tmp[,25] [is.infinite(DIT_tmp$alg_perzoo)] = NA
 
@@ -1075,11 +1079,17 @@ for (f in 1:nwebs){
 
 	DIT_tmp[,31] = mean(DIT_tmp$alg_perzoo,na.rm=T )
 	
-	DIT_tmp[1:(nt2/2),32] = mean(DIT_tmp$N_res,na.rm=T)
-	DIT_tmp[1:(nt2/2),33] = mean(DIT_tmp$N_inv,na.rm=T)
-	DIT_tmp[(nt2/2+1):nt2,32] = mean(DIT_tmp$N_res,na.rm=T)
-	DIT_tmp[(nt2/2+1):nt2,33] = mean(DIT_tmp$N_inv,na.rm=T)
-	
+	#Get the carrying capacity for each scenario: 
+	DIT_tmp[1:(nt2/4),32] = mean(DIT_tmp$N_res[1:(nt2/4)],na.rm=T)
+	DIT_tmp[(nt2/4+1):nt2/2,32] = mean(DIT_tmp$N_res[(nt2/4+1):nt2/2],na.rm=T)
+	DIT_tmp[(nt2/2+1):(nt2*3/4),32] = mean(DIT_tmp$N_res[(nt2/2+1):(nt2*3/4)],na.rm=T)
+	DIT_tmp[(nt2*3/4+1):(nt2),32] = mean(DIT_tmp$N_res[(nt2*3/4+1):(nt2)],na.rm=T)
+
+	DIT_tmp[1:(nt2/4),33] = mean(DIT_tmp$N_inv[1:(nt2/4)],na.rm=T)
+	DIT_tmp[(nt2/4+1):nt2/2,33] = mean(DIT_tmp$N_inv[(nt2/4+1):nt2/2],na.rm=T)
+	DIT_tmp[(nt2/2+1):(nt2*3/4),33] = mean(DIT_tmp$N_inv[(nt2/2+1):(nt2*3/4)],na.rm=T)
+	DIT_tmp[(nt2*3/4+1):(nt2),33] = mean(DIT_tmp$N_inv[(nt2*3/4+1):(nt2)],na.rm=T)
+
 	DIT_tmp[,34] = paste(f,DIT_tmp$res_spp,sep="")
 
     DIT_tmp = as.data.frame(DIT_tmp) 
@@ -1177,6 +1187,14 @@ ggplot()+
 	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
 	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	facet_grid(temperature~invade_monoculture)  +ylim(0,8E4)
+	+ylim(0,0.001)
+
+ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = aiE, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = aiE, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)  +ylim(0,8E4)
 
 ggplot()+ 
 	geom_point( data=mDIT_sub, shape = 0, mapping= aes(y = N_res, x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
@@ -1185,24 +1203,43 @@ ggplot()+
 	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(y = N_inv, x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	facet_grid(temperature~invade_monoculture)  +ylim(0,5E2)
 
+ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = abs(N_res-res_K), y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = abs(N_inv-inv_K), y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x =  abs(N_res-res_K), y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = abs(N_inv-inv_K), y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)   +ylim(0,8E4)
+ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(y = abs(N_res-res_K), x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(y = abs(N_inv-inv_K), x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(y =  abs(N_res-res_K), x =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(y = abs(N_inv-inv_K), x =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)  +ylim(-00,300) +xlim(-5,15)
 
 ggplot()+ 
-	geom_boxplot( data=mDIT_sub,mapping= aes(y = alg_per_Nres, x =ai1, color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	#geom_boxplot( data=mDIT_sub, shape = 0, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	geom_boxplot( data=m1_DIT_sub, mapping= aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	#geom_boxplot( data=m1_DIT_sub, shape = 18, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	facet_grid(temperature~invade_monoculture)  +ylim(0,8E4)
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = ai1, y =alg_perzoo,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = ai2, y =alg_perzoo,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = ai1, y =alg_perzoo,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = ai2, y =alg_perzoo,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)  +ylim(0,1E5)
 
+ggplot()+ 
+	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = aiE, y =alg_perzoo,  group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = aiE, y =alg_perzoo,  group = interaction(inv_spp,replicate_number) ) ) +  
+	facet_grid(temperature~invade_monoculture)  +ylim(0,2.5E3)
+
+
+#=============================================================================
 m1_DIT_sub = subset(m1_DIT, species == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia at 28 C
-mDIT_sub = subset(mDIT, inv_spp == "daphnia" & temperature == 28 & nspp=2) #Daphnia invasion 
+mDIT_sub = subset(mDIT, inv_spp == "daphnia" & temperature == 28 & nspp==2) #Daphnia invasion 
 
 ggplot()+ 
 	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = ai2, y =alg_per_Nres,  color = time1))
 	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = ai2, y =alg_per_Ninv,  color = time1)) +  , group = interaction(inv_spp,replicate_number) ) )
 
-#=============================================================================
+
 m1_DIT_sub = subset(m1_DIT, invade_monoculture == "monoculture"& temperature == 28) 
-mDIT_sub = subset(mDIT, nspp == 1& temperature == 28)
+mDIT_sub = subset(mDIT, nspp == 1 & temperature == 28)
 
 ggplot()+ 
 		geom_line(data=mDIT_sub, mapping= aes(x = time1, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
