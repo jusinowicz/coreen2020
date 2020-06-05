@@ -871,8 +871,8 @@ for (i in 1:nmesos) {
 
 	#Add the DIT to the data frames. There will be 11 new columns. 
 	ncnames = c("N_res","N_inv","aiE","te1","te2","ee1","ee2","ai1","ai2","si1","si2",
-	  "res_spp", "inv_spp", "res_K", "inv_K" )
-	DIT_tmp = data.frame(matrix(0,nt2,15) )
+	  "res_spp", "inv_spp", "res_K", "inv_K","res_aii", "res_aij", "inv_aii","inv_aij")
+	DIT_tmp = data.frame(matrix(0,nt2,19) )
 	colnames(DIT_tmp) = ncnames
 	DIT_tmp[,1:2] = as.matrix(pop_ts)/f
 	DIT_tmp[(k+1):nt2,3] = aiE_webR[[i]]$local
@@ -883,18 +883,31 @@ for (i in 1:nmesos) {
 	DIT_tmp[,12] = factor( levels = levels(rspecies))
 	DIT_tmp[,13] = factor( levels = levels(rspecies))
 
+	#Add some of the population parameters to the data.frame: 
+	t1 = as.character(unique(out1R[[i]]$species)[1])
+	tm1 = which(temps == unique(out1R[[i]]$temperature))
 	if( out1R[[i]]$invade_monoculture[1] == "monoculture") {
 		DIT_tmp[,12] = unique(out1R[[i]]$species)[1]
 		DIT_tmp[,13] = unique(out1R[[i]]$species)[1]
 		
-		#Add the carrying capacity from the fitted IGR
-		t1 = as.character(unique(out1R[[i]]$species)[1])
+		
 		if(length(grep("daph",t1)) >0 ) { 
+			#the carrying capacity from the fitted IGR
 			DIT_tmp[,14] = coef(igr_daph[[ti]]$fit_mod)["a1"]
 			DIT_tmp[,15] = coef(igr_daph[[ti]]$fit_mod)["a1"]
+			DIT_tmp[,16] = out1[[tm1]]$spp_prms$aii[1]
+			DIT_tmp[,17] = out1[[tm1]]$spp_prms$aij[1]
+			DIT_tmp[,18] = out1[[tm1]]$spp_prms$aii[1]
+			DIT_tmp[,19] = out1[[tm1]]$spp_prms$aij[1]
+	
+
 		} else{ 
 			DIT_tmp[,14] = coef(igr_dia[[ti]]$fit_mod)["a1"]
 			DIT_tmp[,15] = coef(igr_dia[[ti]]$fit_mod)["a1"]
+			DIT_tmp[,16] = out1[[tm1]]$spp_prms$aii[2]
+			DIT_tmp[,17] = out1[[tm1]]$spp_prms$aij[2]
+			DIT_tmp[,18] = out1[[tm1]]$spp_prms$aii[2]
+			DIT_tmp[,19] = out1[[tm1]]$spp_prms$aij[2]
 		}
 	} else {
 	  if (out1R[[i]]$invade_monoculture[1] == "daph invade"){
@@ -902,11 +915,19 @@ for (i in 1:nmesos) {
 		DIT_tmp[,13] = (rspecies)[1]
 		DIT_tmp[,14] = coef(igr_dia[[ti]]$fit_mod)["a1"]
 		DIT_tmp[,15] = coef(igr_daph[[ti]]$fit_mod)["a1"]
+		DIT_tmp[,16] = out1[[tm1]]$spp_prms$aii[2]
+		DIT_tmp[,17] = out1[[tm1]]$spp_prms$aij[2]
+		DIT_tmp[,18] = out1[[tm1]]$spp_prms$aii[1]
+		DIT_tmp[,19] = out1[[tm1]]$spp_prms$aij[1]
 	  } else {
 	    DIT_tmp[,12] = (rspecies)[1] 
 	    DIT_tmp[,13] = (rspecies)[2]
 	   	DIT_tmp[,14] = coef(igr_daph[[ti]]$fit_mod)["a1"]
 	  	DIT_tmp[,15] = coef(igr_dia[[ti]]$fit_mod)["a1"]
+		DIT_tmp[,16] = out1[[tm1]]$spp_prms$aii[1]
+		DIT_tmp[,17] = out1[[tm1]]$spp_prms$aij[1]
+		DIT_tmp[,18] = out1[[tm1]]$spp_prms$aii[2]
+		DIT_tmp[,19] = out1[[tm1]]$spp_prms$aij[2]
 	  }
 	}
 
@@ -1261,15 +1282,21 @@ ggplot()+
 
 
 #=============================================================================
+#=============================================================================
+m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") 
+mDIT_sub = subset(mDIT, nspp == 2)
+
+m1_DIT_sub$res_spp = revalue(m1_DIT_sub$res_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
+m1_DIT_sub$inv_spp = revalue(m1_DIT_sub$inv_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
 
 #Some summary numbers
-aie_sum=mDIT %>% 
+aie_sum=mDIT_sub %>% 
 dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,nspp,res_aii,res_aij,inv_aii,inv_aij) %>%
 dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
 	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
 	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
 
-aie_sumR=m1_DIT %>% 
+aie_sumR=m1_DIT_sub %>% 
 dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,res_aii,res_aij,inv_aii,inv_aij) %>%
 dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
 	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
@@ -1282,8 +1309,10 @@ ggplot()+
 	geom_point( data=mDIT_sub,  mapping=aes(x = (inv_aij_rt*res_aij_rt)/(res_aii_rt*inv_aii_rt), y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	geom_point(data=aie_sum,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "1", group=interaction(res_spp,replicate_number) ),size=3) +
 	geom_point(data=aie_sum,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "2", group=interaction(inv_spp,replicate_number) ),size=3 ) +
-	# geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(y =  (N_res-res_K), x =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	# geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(y = (N_inv-inv_K), x =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=m1_DIT_sub,  mapping= aes(x = (inv_aij*res_aij)/(res_aii*inv_aii), y =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub,  mapping=aes(x = (inv_aij*res_aij)/(res_aii*inv_aii), y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point(data=aie_sumR,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "3", group=interaction(res_spp,replicate_number) ),size=3) +
+	geom_point(data=aie_sumR,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "4", group=interaction(inv_spp,replicate_number) ),size=3 ) +
 	facet_grid(temperature~invade_monoculture)
 
 #Complexity vs. temp.
