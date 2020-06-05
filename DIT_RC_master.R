@@ -581,7 +581,7 @@ for (w in 1:nwebs){
 	#Random algal/consumer fluctuations. 
 	#Algae
 	c1 = 1 #10E6
-	amp1 = 1E-5# 0.25 #100000 #1/exp(1)
+	amp1 =  0.25 #100000 #1/exp(1) 1E-5#
 	spp_prms
 
 	############################
@@ -598,7 +598,7 @@ for (w in 1:nwebs){
 	Kc_sd = matrix(c(sqrt(var(daph_tmp_a$N,na.rm=T)),sqrt(var(dia_tmp_a$N,na.rm=T))), nCsp, 1)
 	
 	c2 = 1
-	amp2 = 1E-5# mean(spp_prms$Kc/Kc_sd) #Take an average coefficient of variation. 
+	amp2 =  mean(spp_prms$Kc/Kc_sd) #1E-5# #Take an average coefficient of variation. 
 	res_R = c(amp1,c1,amp2,c2)
 
 	
@@ -718,14 +718,6 @@ for (w in 1:nwebs){
 	lines( out1[[w]]$out[,4],col="red",t="l")
 	points(daph_tmp$day_n,daph_tmp$N, col="red")
 
-	# daph_tmp = subset(mesos_daph, temperature == temps[[w]]) #Daphnia at temp
-	# dia_tmp = subset(mesos_dia, temperature == temps[[w]] ) #Daphnia at temp
-	# plot(dia_tmp$day_n-27, dia_tmp$N)
-	# lines( out1[[w]]$out[,4])
-	
-	# plot(daph_tmp$day_n-27, daph_tmp$N)
-	# lines( out1[[w]]$out[,3])
-
 	#=============================================================================
 	# Inner loop: Mutual invasion:remove each species and track the dynamics
 	#=============================================================================
@@ -735,7 +727,8 @@ for (w in 1:nwebs){
 		out_temp =NULL
 		out_temp2 =NULL
 		inv_spp = s
-		winit =  out1[[w]]$out[tl,2:(nspp+1)]
+		#winit =  out1[[w]]$out[tl,2:(nspp+1)]
+		winit = matrix(c(spp_prms$Kr[1], spp_prms$Kr[2], 1/spp_prms$aii[1],1/spp_prms$aii[2],0))
 		winit[inv_spp] = 0
 
 		#Equilibrate new community
@@ -874,7 +867,7 @@ for (i in 1:nmesos) {
 	  "res_spp", "inv_spp", "res_K", "inv_K","res_aii", "res_aij", "inv_aii","inv_aij")
 	DIT_tmp = data.frame(matrix(0,nt2,19) )
 	colnames(DIT_tmp) = ncnames
-	DIT_tmp[,1:2] = as.matrix(pop_ts)/f
+	DIT_tmp[,1:2] = as.matrix(pop_ts)/f1R
 	DIT_tmp[(k+1):nt2,3] = aiE_webR[[i]]$local
 	DIT_tmp[(k+1):nt2,4:5] = di_webR[[i]]$te_local
 	DIT_tmp[(k*2):nt2,6:7] = di_webR[[i]]$ee_local
@@ -1154,7 +1147,7 @@ mDIT = cbind(time1 = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1),
 #=============================================================================
 #Saving
 #=============================================================================
-save(file="daphDia_DIT_1220_NoVar_k2f1000.var", "m1_DIT","out1R","di_webR",
+save(file="daphDia_DIT_1220_nVar_k2f1000.var", "m1_DIT","out1R","di_webR",
 	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
 	"te_webS","si_webS", "aiE_webS")
 
@@ -1319,24 +1312,24 @@ ggplot()+
 ggplot()+ 
 	geom_point( data=aie_sum,  mapping= aes(y =aiE_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
 	geom_point( data=aie_sum,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
-	#geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = aiE, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	#geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(y =aiE_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
 	facet_grid(invade_monoculture~.) 
 
 #complexity vs. competition
 ggplot()+ 
 	geom_point( data=aie_sum,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
 	geom_point( data=aie_sum,  mapping=aes(x = (inv_aij*res_aij)/(inv_aii*res_aii), y =aiE_mean,  color = interaction( inv_spp, nspp) ) ) +  
-	#geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = aiE, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	#geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(x = (inv_aij*res_aij)/(inv_aii*res_aii), y =aiE_mean,  color = interaction( inv_spp, nspp) ) ) +  
 	facet_grid(invade_monoculture~.) 
 
 #Competition vs. temp
 ggplot()+ 
 	geom_point( data=aie_sum,  mapping= aes(y =inv_aij*res_aij/(inv_aii*res_aii) , x =temperature,  color = interaction( res_spp, nspp ) ) )  +
 	geom_point( data=aie_sum,  mapping=aes(y = inv_aij*res_aij/(inv_aii*res_aii), x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
-	#geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = aiE, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	#geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(y =inv_aij*res_aij/(inv_aii*res_aii) , x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(y = inv_aij*res_aij/(inv_aii*res_aii), x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
 	facet_grid(invade_monoculture~.)
 
 
