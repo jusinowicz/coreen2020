@@ -527,7 +527,7 @@ ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2.
 #Set parameters for simulation
 #=============================================================================
 #Length and time steps of each model run
-tend = 20
+tend = 100
 delta1 = 0.01
 tl=tend/delta1+1
 
@@ -581,7 +581,7 @@ for (w in 1:nwebs){
 	#Random algal/consumer fluctuations. 
 	#Algae
 	c1 = 1 #10E6
-	amp1 =  0.25 #100000 #1/exp(1) 1E-5#
+	amp1 = 0.25 #1E-5# #100000 #1/exp(1) 
 	spp_prms
 
 	############################
@@ -598,7 +598,7 @@ for (w in 1:nwebs){
 	Kc_sd = matrix(c(sqrt(var(daph_tmp_a$N,na.rm=T)),sqrt(var(dia_tmp_a$N,na.rm=T))), nCsp, 1)
 	
 	c2 = 1
-	amp2 =  mean(spp_prms$Kc/Kc_sd) #1E-5# #Take an average coefficient of variation. 
+	amp2 = mean(spp_prms$Kc/Kc_sd) #1E-5#  #Take an average coefficient of variation. 
 	res_R = c(amp1,c1,amp2,c2)
 
 	
@@ -710,13 +710,13 @@ for (w in 1:nwebs){
 	tryCatch( {out1[w] = list(food_web_dynamics (spp_list = c(nRsp,nCsp,nPsp), spp_prms = spp_prms, 
 		tend, delta1, winit = winit, res_R = res_R,final = FALSE ))}, error = function(e){}) 
 
-	print(out1[[w]]$out[tl,])
+	# print(out1[[w]]$out[tl,])
 
-	#Look at basic plots on the fly: 
-	plot(out1[[w]]$out[,5],t="l",ylim=c(0,max(out1[[w]]$out[tl,4:5])))
-	points(dia_tmp$day_n, dia_tmp$N)
-	lines( out1[[w]]$out[,4],col="red",t="l")
-	points(daph_tmp$day_n,daph_tmp$N, col="red")
+	# #Look at basic plots on the fly: 
+	# plot(out1[[w]]$out[,5],t="l",ylim=c(0,max(out1[[w]]$out[tl,4:5])))
+	# points(dia_tmp$day_n, dia_tmp$N)
+	# lines( out1[[w]]$out[,4],col="red",t="l")
+	# points(daph_tmp$day_n,daph_tmp$N, col="red")
 
 	#=============================================================================
 	# Inner loop: Mutual invasion:remove each species and track the dynamics
@@ -776,7 +776,7 @@ for (w in 1:nwebs){
 #Set k, the block size: 
 k=2
 f1R=1 #scaling term for converting fractional populations in simulations
-f1S=1000 #scaling term for converting fractional populations in simulations
+f1S=1 #scaling term for converting fractional populations in simulations
 
 
 #=============================================================================
@@ -1050,15 +1050,18 @@ for (f in 1:nwebs){
     #Temperatures
     DIT_tmp[,19] = temps[f]
 
+    #Treatment type (invasion vs. monoculture) and number of species
+	spp1 = c(1:(nt2/4),(nt2/2+1):(nt2/2+nt2/4)) #Sinlge species
+    spp2 = c((nt2/4+1):(nt2/2),(nt2/2+nt2/4+1):nt2) #Invasion, 2 spp
     DIT_tmp[,20] = factor(levels = levels(invader))
     DIT_tmp[1:nt2/2,20] = invader[2]
     DIT_tmp[(nt2/2+1):nt2,20] = invader[3]
+    DIT_tmp[spp1,20] =  invader[1]
 
-    spp1 = c(1:(nt2/4),(nt2/2+1):(nt2/2+nt2/4))
-    spp2 = c((nt2/4+1):(nt2/2),(nt2/2+nt2/4+1):nt2)
     DIT_tmp[,21] = factor(levels = levels(nspps2))
     DIT_tmp[spp1,21] = nspps2[1]
     DIT_tmp[spp2,21] = nspps2[2]
+
 
 	#Algal consumption rates. 
 	#Resident
@@ -1147,11 +1150,13 @@ mDIT = cbind(time1 = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1),
 #=============================================================================
 #Saving
 #=============================================================================
-save(file="daphDia_DIT_1220_nVar_k2f1000.var", "m1_DIT","out1R","di_webR",
+save(file="daphDia_DIT_1350_nVar_k2f1.var", "m1_DIT","out1R","di_webR",
 	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
 	"te_webS","si_webS", "aiE_webS")
 
-
+save(file="daphDia_DIT_13100_NoVar_k2f1.var", "m1_DIT","out1R","di_webR",
+	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
+	"te_webS","si_webS", "aiE_webS")
 
 #=============================================================================
 #Plots in combination with the real data using all data
@@ -1160,7 +1165,10 @@ save(file="daphDia_DIT_1220_nVar_k2f1000.var", "m1_DIT","out1R","di_webR",
 #=============================================================================
 
 m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") #Daphnia at 28 C
-mDIT_sub = subset(mDIT, nspp == 2)
+mDIT_sub = subset(mDIT, invade_monoculture != "monoculture")
+
+m1_DIT_sub = m1_DIT  #Daphnia at 28 C
+mDIT_sub = mDIT
 
 # m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture" & temperature == 28 & inv_spp == "daphnia") #Daphnia at 28 C
 # mDIT_sub = subset(mDIT, nspp == 2 & temperature == 28 & inv_spp == "daphnia")
@@ -1187,11 +1195,23 @@ p2 = ggplot()+
 		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
+		facet_grid(temperature~invade_monoculture) + xlim(0,30)    +
+		scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		ylab("Bits (AI) ")+
+		xlab("Day")+
+		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+
+p2 = ggplot()+ 
+		geom_line(data=mDIT_sub, mapping= aes(x = time1-tend+1, y =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
 		facet_grid(temperature~invade_monoculture) +xlim(0,30)    +
 		scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
 		ylab("Bits (AI) ")+
 		xlab("Day")+
 		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+
 
 p3 = ggplot()+ 
 		geom_line(data=mDIT_sub, mapping= aes(x = time1-tend+1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
@@ -1215,8 +1235,8 @@ grid.draw(rbind(gp1, gp2,gp3))
 dev.off()
 
 #=============================================================================
-m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") 
-mDIT_sub = subset(mDIT, nspp == 2)
+m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, invade_monoculture != "monoculture")
 
 m1_DIT_sub$res_spp = revalue(m1_DIT_sub$res_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
 m1_DIT_sub$inv_spp = revalue(m1_DIT_sub$inv_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
@@ -1276,22 +1296,39 @@ ggplot()+
 
 #=============================================================================
 #=============================================================================
-m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") 
-mDIT_sub = subset(mDIT, nspp == 2)
+m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, invade_monoculture != "monoculture")
 
 m1_DIT_sub$res_spp = revalue(m1_DIT_sub$res_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
 m1_DIT_sub$inv_spp = revalue(m1_DIT_sub$inv_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
 
 #Some summary numbers
+#For deterministic sim: 
 aie_sum=mDIT_sub %>% 
 dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,nspp,res_aii,res_aij,inv_aii,inv_aij) %>%
-dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
+dplyr::summarize(aiE_mean = aiE[time1==tend*2], #mean(aiE,na.rm=T),
+	ai1_mean = ai1[time1==tend*2],# mean(ai1,na.rm=T), 
+	ai2_mean = ai2[time1==tend*2], #mean(ai2,na.rm=T),
 	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
 	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
 
+#For stochastic sim: 
+mDIT_sub2 = subset(mDIT_sub, mDIT_sub$time1 >= 3/4*(tend*2) & mDIT_sub$time1 <= (tend*2)) 
+
+aie_sum=mDIT_sub2 %>% 
+dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,nspp,res_aii,res_aij,inv_aii,inv_aij) %>%
+dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
+	ai1_mean =mean(ai1,na.rm=T), 
+	ai2_mean = mean(ai2,na.rm=T),
+	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
+	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
+
+#For real data: 
 aie_sumR=m1_DIT_sub %>% 
 dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,res_aii,res_aij,inv_aii,inv_aij) %>%
 dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
+	ai1_mean = mean(ai1,na.rm=T), 
+	ai2_mean = mean(ai2,na.rm=T),
 	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
 	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
 
@@ -1314,6 +1351,13 @@ ggplot()+
 	geom_point( data=aie_sum,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
 	geom_point( data=aie_sumR,  mapping= aes(y =aiE_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
 	geom_point( data=aie_sumR,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	facet_grid(invade_monoculture~.) 
+
+ggplot()+ 
+	geom_point( data=aie_sum,  mapping= aes(y =ai1_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sum,  mapping=aes(y =ai2_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(y =ai1_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(y =ai2_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
 	facet_grid(invade_monoculture~.) 
 
 #complexity vs. competition
@@ -1345,8 +1389,8 @@ ggplot()+
 
 
 #=============================================================================
-m1_DIT_sub = subset(m1_DIT, species == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia at 28 C
-mDIT_sub = subset(mDIT, inv_spp == "daphnia" & temperature == 28 & nspp==2) #Daphnia invasion 
+m1_DIT_sub = subset(m1_DIT, inv_spp == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, inv_spp == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia invasion 
 
 ggplot()+ 
 	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = ai2, y =alg_per_Nres,  color = time1))
