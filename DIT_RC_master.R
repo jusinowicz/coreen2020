@@ -106,7 +106,7 @@ ggplot(aes(y = algae_abundance, x = N, color = species, group = interaction(spec
 #Collect/set basic data on number of treatments, species, etc.
 #=============================================================================
 #These are set manually: 
-inv_day = 28 #The first day of attempted invasion
+inv_day = 27 #The first day of attempted invasion
 inv_end = 50#The last day of invasion conditions
 no_reps = 18 #The number of replicated mesocosms total per resident/invader
 nEspp=2
@@ -217,8 +217,8 @@ igrij_prms = c("a1","b1","c1")
 #f_lvii = formula ( Ndiff ~  ri*(1-aii*N) )
 
 #2b. LV model without fitting ri, constrained intercept (using offset=1: see below)
-f_lvii = Ndiff ~ N +0
-#f_lvii = Ndiff ~ N 
+#f_lvii = Ndiff ~ N +0
+f_lvii = Ndiff ~ N 
 
 
 #3. *** Leslie-Gower ***
@@ -366,16 +366,30 @@ for(t in 1:ntemps) {
 	# lvii_dia[[t]] = lm(f_lvii,igr_dia_tmp )
 
 	#Intraspecific competition, when fitting only to the "invasion" portion of data
- 	daph_tmpb_inv = subset(daph_tmpb, day_n <= (inv_end-inv_day) )
- 	dia_tmpb_inv = subset(dia_tmpb, day_n <= (inv_end-inv_day) )
+ 	# daph_tmpb_inv = subset(daph_tmpb, day_n <= (inv_end-inv_day) )
+ 	# dia_tmpb_inv = subset(dia_tmpb, day_n <= (inv_end-inv_day) )
 
  	#Assume that only positive increments reflect growth? 
-	daph_tmpb_inv  = subset(daph_tmpb_inv , Ndiff>0)
-	dia_tmpb_inv= subset(dia_tmpb_inv, Ndiff>0)
+	daph_tmpb_inv  = subset(daph_tmpb , Ndiff>0)
+	dia_tmpb_inv= subset(dia_tmpb, Ndiff>0)
 
-	lvii_daph[[t]] = lm(f_lvii, daph_tmpb_inv, offset = rep(1,length(daph_tmpb_inv$N))  )
-	lvii_dia[[t]] = lm(f_lvii,dia_tmpb_inv, offset = rep(1,length(dia_tmpb_inv$N))  )
+	lvii_daph[[t]] = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
+	lvii_daph[[t]]$new_fit$N = seq(1, max(daph_tmpb_inv$N,na.rm=T) ) 
+	lvii_daph[[t]]$new_fit$N_pred = lvii_daph[[t]]$new_fit$N* coef(lvii_daph[[t]])[2] + coef(lvii_daph[[t]])[1]
+	#lvii_daph[[t]]$new_fit$N_pred = lvii_daph[[t]]$new_fit$N* coef(lvii_daph[[t]])+1
+	lvii_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
+		 			N=lvii_daph[[t]]$new_fit$N,  
+		 			Ndiff= lvii_daph[[t]]$new_fit$N_pred )
+    lvii_daph_pred = rbind(lvii_daph_pred, lvii_daph_tmp)
 
+	lvii_dia[[t]] = lm(f_lvii,dia_tmpb_inv)#, offset = rep(1,length(dia_tmpb_inv$N))  )
+	lvii_dia[[t]]$new_fit$N = seq(1, max(dia_tmpb_inv$N,na.rm=T) ) 
+	lvii_dia[[t]]$new_fit$N_pred = lvii_dia[[t]]$new_fit$N* coef(lvii_dia[[t]])[2] + coef(lvii_dia[[t]])[1]
+	#lvii_dia[[t]]$new_fit$N_pred = lvii_dia[[t]]$new_fit$N* coef(lvii_dia[[t]]) + 1
+	lvii_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
+		 			N=lvii_dia[[t]]$new_fit$N,  
+		 			Ndiff= lvii_dia[[t]]$new_fit$N_pred )
+    lvii_dia_pred = rbind(lvii_dia_pred, lvii_dia_tmp)
 	#=============================================================================
 	#Interspecific competition
 	#=============================================================================
@@ -426,7 +440,20 @@ for(t in 1:ntemps) {
 	dia_inv_tmp = subset(dia_inv_tmp, Ndiff>0)
 
 	lvij_daph[[t]] = lm(f_lvij, daph_inv_tmp, offset = rep(1,length(daph_inv_tmp$N_res))  )
+	lvij_daph[[t]]$new_fit$N_res = seq(1, max(daph_inv_tmp$N_res,na.rm=T) ) 
+	lvij_daph[[t]]$new_fit$N_pred = lvij_daph[[t]]$new_fit$N_res* coef(lvij_daph[[t]]) + 1
+	lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
+		 			N_res=lvij_daph[[t]]$new_fit$N_res,  
+		 			Ndiff= lvij_daph[[t]]$new_fit$N_pred )
+    lvij_daph_pred = rbind(lvij_daph_pred, lvij_daph_tmp)
+	
 	lvij_dia[[t]] = lm(f_lvij,dia_inv_tmp, offset = rep(1,length(dia_inv_tmp$N_res))  )
+	lvij_dia[[t]]$new_fit$N_res = seq(1, max(dia_inv_tmp$N_res,na.rm=T) ) 
+	lvij_dia[[t]]$new_fit$N_pred = lvij_dia[[t]]$new_fit$N_res* coef(lvij_dia[[t]]) + 1
+	lvij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
+		 			N_res=lvij_dia[[t]]$new_fit$N_res,  
+		 			Ndiff= lvij_dia[[t]]$new_fit$N_pred )
+    lvij_dia_pred = rbind(lvij_dia_pred, lvij_dia_tmp)
 
 	#Output
 	print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
@@ -494,19 +521,19 @@ ggplot(cl_plot, aes(x = algae_abundance, y =N, color = species) ) + #2.
 #ggplot(cl_plot, aes(x = day_n, y =N, color = species) ) + #1. 
 #ggplot(cl_plot, aes(x = Adiff, y =N, color = species) ) + #2. 
 ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2. 
-  geom_point( )+ facet_grid(temperature~species) + 
+  geom_point( )+ 
   geom_line(data= lvii_pred, mapping= aes(x = N, y =Ndiff, color=species) )+
-  facet_grid(temperature~species)+ #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
+  facet_grid(temperature~species) + #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
   xlab("Zooplankton abundance ")+
   ylab("Growth rate")+  xlim(0,60)+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 #ggsave("./intrinsicR_diaDaph2.pdf", width = 8, height = 10)
 
 ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2. 
-  geom_point( )+ facet_grid(temperature~species) + 
-  geom_line(data= lvij_pred, mapping= aes(x = s, y =N_pred, color=species) )+
-  facet_grid(temperature~species)+ #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
-  xlab("Zooplankton abundance ")+
+  geom_point( )+
+  geom_line(data= lvij_pred, mapping= aes(x = N_res, y =Ndiff, color=species) )+
+  facet_grid(temperature~species) + #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
+  xlab("Zooplankton abundance ") +
   ylab("Growth rate")+  xlim(0,60)+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 
@@ -581,7 +608,7 @@ for (w in 1:nwebs){
 	#Random algal/consumer fluctuations. 
 	#Algae
 	c1 = 1 #10E6
-	amp1 = 0.25 #1E-5# #100000 #1/exp(1) 
+	amp1 = 1E-5#0.25 # #100000 #1/exp(1) 
 	spp_prms
 
 	############################
@@ -598,7 +625,7 @@ for (w in 1:nwebs){
 	Kc_sd = matrix(c(sqrt(var(daph_tmp_a$N,na.rm=T)),sqrt(var(dia_tmp_a$N,na.rm=T))), nCsp, 1)
 	
 	c2 = 1
-	amp2 = mean(spp_prms$Kc/Kc_sd) #1E-5#  #Take an average coefficient of variation. 
+	amp2 = 1E-5#mean(spp_prms$Kc/Kc_sd) #  #Take an average coefficient of variation. 
 	res_R = c(amp1,c1,amp2,c2)
 
 	
@@ -625,12 +652,12 @@ for (w in 1:nwebs){
 	aij_rc[w,] = (10E6*spp_prms$cC[1,]*spp_prms$cC[1,2:1]*spp_prms$rC[1,])
 
 	#Phenomenological alphas.
-  	aii_all[w,1] = abs(coef(lvii_daph[[w]])[1])
-  	aii_all[w,2] = abs(coef(lvii_dia[[w]])[1])
+  	aii_all[w,1] = abs(coef(lvii_daph[[w]])[2])
+  	aii_all[w,2] = abs(coef(lvii_dia[[w]])[2])
   	aij_all[w,1] = abs(coef(lvij_daph[[w]])[1])
   	aij_all[w,2] = abs(coef(lvij_dia[[w]])[1])
 
-  	if(w<5){aij_all[w,2]=2*aij_all[w,2]}
+  	#if(w<5){aij_all[w,2]=2*aij_all[w,2]}
 
 	# The trick now is to figure out how to adjust the RC alphas to match the phenomenological
 	# alphas by determining an appropriate R1 and the properties of a fictitious resource 2.  
@@ -649,12 +676,33 @@ for (w in 1:nwebs){
 	#4.) Which differs from the phenomenological ajj by:
 	ajj_diff = abs(aii_rc[w,2] - aii_all[w,2] )
 
-	#5.) Make this the basis for a fictitious second resource that makes ajj correct now:
-	# *Assuming Diaphanosoma utilizes R2 at the same rates as R1 and that R2 = 1, 
-	# *which makes K2 the only free parameter. 
+	#5.) Make this the basis for a fictitious second resource that makes ajj correct now. 
+	# Adjust C2's consumption so that species fitnesses are very close in value. 
+	# *Assume C2's consumption rate of R2 is the same as R1
+	# *Assume the relative fitness ratio is equivalent to the fitted intrinsic growth rates
+	# *Make rR2 = 1 and assume that Kr2 is the free parameter. 
 	#spp_prms$rR[2] = spp_prms$rR[1]/10 
-	spp_prms$cC[2,2] = spp_prms$cC[1,1] -spp_prms$cC[1,2]
+	spp_prms$rC[2,2] = spp_prms$rC[1,2]
+	if (!is.null(igr_daph[[w]]$fit_mod) & !is.null(igr_dia[[w]]$fit_mod) ){ 
+		fit_rat= coef(igr_dia[[w]]$fit_mod)[["c1"]]/coef(igr_daph[[w]]$fit_mod)[["c1"]] 
+	} else { fit_rat = 0.75}
+	fit_tmp1 = spp_prms$cC[1,1]*spp_prms$rC[1,1]*(spp_prms$Kr[1])-1
+	fit_tmp2 = fit_tmp1*fit_rat
+	spp_prms$cC[2,2] = (fit_tmp2 + 1) / (spp_prms$rC[2,2]*spp_prms$Kr[2] )
+	#spp_prms$cC[2,2] = spp_prms$cC[1,1] -spp_prms$cC[1,2]
 	spp_prms$Kr[2] = (spp_prms$rR[2]*ajj_diff)/( spp_prms$cC[2,2]^2*spp_prms$rC[2,2] )
+
+	# *Make K2 = K1 and assume that rR2 is the free parameter. This keeps C1 and C2 
+	# about equal in fitness. 
+	# *Assume that the consumption of R2 makes C2's total consumption of resources
+	# about equivalent to C1. 
+	# NOTE: This version is potentially problematic when rR2 is very small because
+	# it then violates the timescale separation that makes all of this work.  
+	# spp_prms$Kr[2] = spp_prms$Kr[1]
+	# spp_prms$cC[2,2] = spp_prms$cC[1,1] -spp_prms$cC[1,2]
+	# spp_prms$rR[2] = ( spp_prms$cC[2,2]^2*spp_prms$rC[2,2] )/ajj_diff
+
+
 
 	#6.) This creates a new aji for Dia that must be corrected for by giving Daphnia a positive
 	# consumption rate of R2 (which then must be removed from Daphnia's growth equation by making
@@ -668,15 +716,17 @@ for (w in 1:nwebs){
 
 	#Misc.
 	spp_prms$eFc = matrix(1,nCsp,nRsp) # just make the efficiency for everything 1 for now
-	spp_prms$muC = matrix(1, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates	
+	spp_prms$monoculture = matrix(1, nCsp, 1) #matrix(rnorm(nCsp,0.6,0.1), nCsp, 1) #mortality rates	
 	#To give species their actual growth rates: 
 	# spp_prms$eFc[1] = abs(coef(igr_daph[[w]]$fit_mod)["c1"])
 	# spp_prms$eFc[2] = abs(coef(igr_dia[[w]]$fit_mod)["c1"])
 
 	#This parameterizes the CR model to match to the LV in the standard form of 
 	# (1 - competition), where 1 = k in Chesson 1990. 
-	spp_prms$muC=t(spp_prms$cC*spp_prms$rC)%*%(spp_prms$Kr)-1
-	
+	 spp_prms$muC=t(spp_prms$cC*spp_prms$rC)%*%(spp_prms$Kr)-1
+	# aii_intercept = c( abs(coef(lvii_daph[[w]])[1]), abs(coef(lvii_dia[[w]])[1]))
+	# spp_prms$muC=t(spp_prms$cC*spp_prms$rC)%*%(spp_prms$Kr)-aii_intercept
+
 	spp_prms$aii = aii_all[w,]
 	spp_prms$aij = aij_all[w,]
 
@@ -695,8 +745,8 @@ for (w in 1:nwebs){
 	rho1[,2] = aij_all[,2]/(sqrt(aii_all[,1]*aii_all[,2]))
 	the1[,1] = sqrt(aii_all[,1]/aii_all[,2])
 	the1[,2] = sqrt(aii_all[,2]/aii_all[,1])
-	kappa1[,1] = spp_prms$muC[1]+1
-	kappa1[,2] = spp_prms$muC[2]+1
+	kappa1[w,] = spp_prms$muC + 1
+	#kappa1[w,] = spp_prms$muC + aii_intercept
 
 	#=============================================================================
 	# This function gives: 
@@ -1150,7 +1200,7 @@ mDIT = cbind(time1 = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1),
 #=============================================================================
 #Saving
 #=============================================================================
-save(file="daphDia_DIT_1350_nVar_k2f1.var", "m1_DIT","out1R","di_webR",
+save(file="daphDia_DIT_13100_nVar_k2f1.var", "m1_DIT","out1R","di_webR",
 	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
 	"te_webS","si_webS", "aiE_webS")
 
@@ -1183,7 +1233,7 @@ p1= ggplot()+
 		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
-		facet_grid(temperature~invade_monoculture) +ylim(0,2E2) +xlim(0,30) +
+		facet_grid(temperature~invade_monoculture) +ylim(0,2E2) +xlim(0,90) +
 		#scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
 		ylab("Population")+
 		xlab("Day")+
@@ -1195,8 +1245,8 @@ p2 = ggplot()+
 		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
-		facet_grid(temperature~invade_monoculture) + xlim(0,30)    +
-		scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		facet_grid(temperature~invade_monoculture) + xlim(0,90)    +
+		#scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
 		ylab("Bits (AI) ")+
 		xlab("Day")+
 		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
@@ -1206,8 +1256,8 @@ p2 = ggplot()+
 		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
-		facet_grid(temperature~invade_monoculture) +xlim(0,30)    +
-		scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		facet_grid(temperature~invade_monoculture) +xlim(0,90)    +
+		#scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
 		ylab("Bits (AI) ")+
 		xlab("Day")+
 		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
@@ -1218,7 +1268,7 @@ p3 = ggplot()+
 		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
-		facet_grid(temperature~invade_monoculture) +ylim(0,2E6) +xlim(0,30) +
+		facet_grid(temperature~invade_monoculture) +ylim(0,2E6) +xlim(0,90) +
 		#scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
 		xlab("Day")+
 		ylab("Algae consumed per N ")
@@ -1314,6 +1364,7 @@ dplyr::summarize(aiE_mean = aiE[time1==tend*2], #mean(aiE,na.rm=T),
 
 #For stochastic sim: 
 mDIT_sub2 = subset(mDIT_sub, mDIT_sub$time1 >= 3/4*(tend*2) & mDIT_sub$time1 <= (tend*2)) 
+#mDIT_sub2 = subset(mDIT_sub, mDIT_sub$time1 >= tend+tend/4 & mDIT_sub$time1 <= (tend+tend/2)) 
 
 aie_sum=mDIT_sub2 %>% 
 dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,nspp,res_aii,res_aij,inv_aii,inv_aij) %>%
