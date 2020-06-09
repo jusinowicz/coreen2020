@@ -608,8 +608,8 @@ for (w in 1:nwebs){
 	#Random algal/consumer fluctuations. 
 	#Algae
 	c1 = 1 #10E6
-	amp1 = 1E-5#0.25 # #100000 #1/exp(1) 
-	spp_prms
+	amp1 = 1E-5 #0.25 #100000 #1/exp(1) 
+	#spp_prms
 
 	############################
 	#Consumers: 
@@ -657,7 +657,8 @@ for (w in 1:nwebs){
   	aij_all[w,1] = abs(coef(lvij_daph[[w]])[1])
   	aij_all[w,2] = abs(coef(lvij_dia[[w]])[1])
 
-  	#if(w<5){aij_all[w,2]=2*aij_all[w,2]}
+  	if(w<5){aij_all[w,2]=2*aij_all[w,2]}
+	if(w==5){aij_all[w,2]=aij_all[w,1]; aii_all[w,1]=aii_all[(w-1),1]}
 
 	# The trick now is to figure out how to adjust the RC alphas to match the phenomenological
 	# alphas by determining an appropriate R1 and the properties of a fictitious resource 2.  
@@ -676,33 +677,38 @@ for (w in 1:nwebs){
 	#4.) Which differs from the phenomenological ajj by:
 	ajj_diff = abs(aii_rc[w,2] - aii_all[w,2] )
 
-	#5.) Make this the basis for a fictitious second resource that makes ajj correct now. 
-	# Adjust C2's consumption so that species fitnesses are very close in value. 
-	# *Assume C2's consumption rate of R2 is the same as R1
-	# *Assume the relative fitness ratio is equivalent to the fitted intrinsic growth rates
-	# *Make rR2 = 1 and assume that Kr2 is the free parameter. 
-	#spp_prms$rR[2] = spp_prms$rR[1]/10 
-	spp_prms$rC[2,2] = spp_prms$rC[1,2]
-	if (!is.null(igr_daph[[w]]$fit_mod) & !is.null(igr_dia[[w]]$fit_mod) ){ 
-		fit_rat= coef(igr_dia[[w]]$fit_mod)[["c1"]]/coef(igr_daph[[w]]$fit_mod)[["c1"]] 
-	} else { fit_rat = 0.75}
-	fit_tmp1 = spp_prms$cC[1,1]*spp_prms$rC[1,1]*(spp_prms$Kr[1])-1
-	fit_tmp2 = fit_tmp1*fit_rat
-	spp_prms$cC[2,2] = (fit_tmp2 + 1) / (spp_prms$rC[2,2]*spp_prms$Kr[2] )
-	#spp_prms$cC[2,2] = spp_prms$cC[1,1] -spp_prms$cC[1,2]
-	spp_prms$Kr[2] = (spp_prms$rR[2]*ajj_diff)/( spp_prms$cC[2,2]^2*spp_prms$rC[2,2] )
+	#5. Make then new consumption rate and other features of resource 2. There are 
+	# two different ways to do this based on whether coexistence happens or not. 
+	
+	if(w == 5) {
+		#A.) Coexistence. 
+		# Make this the basis for a fictitious second resource that makes ajj correct now. 
+		# Adjust C2's consumption so that species fitnesses are very close in value. 
+		# *Assume C2's consumption rate of R2 is the same as R1
+		# *Assume the relative fitness ratio is equivalent to the fitted intrinsic growth rates
+		# *Make rR2 = 1 and mu2 = mu1, and assume that Kr2 is the free parameter. 
+		#spp_prms$rR[2] = spp_prms$rR[1]/10 
+		spp_prms$rC[2,2] = spp_prms$rC[1,2]
+		if (!is.null(igr_daph[[w]]$fit_mod) & !is.null(igr_dia[[w]]$fit_mod) ){ 
+			fit_rat= coef(igr_dia[[w]]$fit_mod)[["c1"]]/coef(igr_daph[[w]]$fit_mod)[["c1"]] 
+		} else { fit_rat = 0.75}
+		fit_tmp1 = 1#  spp_prms$cC[1,1]*spp_prms$rC[1,1]*(spp_prms$Kr[1])-1
+		fit_tmp2 = fit_tmp1*fit_rat
+		mu_temp1 = spp_prms$cC[1,1]*spp_prms$rC[1,1]*(spp_prms$Kr[1])+1
+	    mu_temp2 = mu_temp1
+		spp_prms$cC[2,2] = (ajj_diff*spp_prms$rR[2] )/(fit_tmp2 + mu_temp2) 
+		#spp_prms$cC[2,2] = spp_prms$cC[1,1] -spp_prms$cC[1,2]
+		spp_prms$Kr[2] = (fit_tmp2+mu_temp2)^2/(spp_prms$rR[2]*ajj_diff*spp_prms$rC[2,2])
+	} else { 
 
-	# *Make K2 = K1 and assume that rR2 is the free parameter. This keeps C1 and C2 
-	# about equal in fitness. 
-	# *Assume that the consumption of R2 makes C2's total consumption of resources
-	# about equivalent to C1. 
-	# NOTE: This version is potentially problematic when rR2 is very small because
-	# it then violates the timescale separation that makes all of this work.  
-	# spp_prms$Kr[2] = spp_prms$Kr[1]
-	# spp_prms$cC[2,2] = spp_prms$cC[1,1] -spp_prms$cC[1,2]
-	# spp_prms$rR[2] = ( spp_prms$cC[2,2]^2*spp_prms$rC[2,2] )/ajj_diff
-
-
+		#B.) Competitive dominance. 
+		# Make this the basis for a fictitious second resource that makes ajj correct now:
+		# *Assuming Diaphanosoma utilizes R2 at the same rates as R1 and that R2 = 1, 
+		# *which makes K2 the only free parameter. 
+		#spp_prms$rR[2] = spp_prms$rR[1]/10 
+		spp_prms$cC[2,2] = spp_prms$cC[1,1] -spp_prms$cC[1,2]
+		spp_prms$Kr[2] = (spp_prms$rR[2]*ajj_diff)/( spp_prms$cC[2,2]^2*spp_prms$rC[2,2] )
+	}
 
 	#6.) This creates a new aji for Dia that must be corrected for by giving Daphnia a positive
 	# consumption rate of R2 (which then must be removed from Daphnia's growth equation by making
@@ -1204,7 +1210,7 @@ save(file="daphDia_DIT_13100_nVar_k2f1.var", "m1_DIT","out1R","di_webR",
 	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
 	"te_webS","si_webS", "aiE_webS")
 
-save(file="daphDia_DIT_13100_NoVar_k2f1.var", "m1_DIT","out1R","di_webR",
+save(file="daphDia_DIT_14100_NoVar_k2f1.var", "m1_DIT","out1R","di_webR",
 	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
 	"te_webS","si_webS", "aiE_webS")
 
