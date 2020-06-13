@@ -657,6 +657,7 @@ for (w in 1:nwebs){
   	aij_all[w,1] = abs(coef(lvij_daph[[w]])[1])
   	aij_all[w,2] = abs(coef(lvij_dia[[w]])[1])
 
+  	if(w==1){aij_all[w,2]=3*aij_all[w,2]}
   	if(w<5){aij_all[w,2]=2*aij_all[w,2]}
 	if(w==5){aij_all[w,2]=aij_all[w,1]; aii_all[w,1]=aii_all[(w-1),1]}
 
@@ -1025,7 +1026,7 @@ for (w in 1:nwebs){
 	# AI_local    Local active information per species
 	# TE_local    Local transfer entropy per species
 	#=============================================================================
-	di_webS[w] = list(get_info_dynamics(pop_ts = pop_ts , k=k,with_blocks=TRUE))
+	di_webS[w] = list(get_info_dynamics(pop_ts = pop_ts , k=k,with_blocks=FALSE))
 
 	## This code takes the population time-series counts output by the ODEs and 
 	## calculates the average Transfer Entropy from each species to every other 
@@ -1206,7 +1207,7 @@ mDIT = cbind(time1 = matrix(seq(0,tend*2+delta1,delta1),dim(mDIT_tmp)[1],1),
 #=============================================================================
 #Saving
 #=============================================================================
-save(file="daphDia_DIT_13100_nVar_k2f1.var", "m1_DIT","out1R","di_webR",
+save(file="daphDia_DIT_14100_nVar_k2f1.var", "m1_DIT","out1R","di_webR",
 	"te_webR","si_webR", "aiE_webR" , "mDIT", "out1","out_inv1","di_webS",
 	"te_webS","si_webS", "aiE_webS")
 
@@ -1240,7 +1241,7 @@ p1= ggplot()+
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
 		facet_grid(temperature~invade_monoculture) +ylim(0,2E2) +xlim(0,90) +
-		#scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
 		ylab("Population")+
 		xlab("Day")+
 		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
@@ -1252,7 +1253,7 @@ p2 = ggplot()+
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =ai1,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =ai2,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
 		facet_grid(temperature~invade_monoculture) + xlim(0,90)    +
-		#scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
 		ylab("Bits (AI) ")+
 		xlab("Day")+
 		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
@@ -1263,7 +1264,7 @@ p2 = ggplot()+
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
 		facet_grid(temperature~invade_monoculture) +xlim(0,90)    +
-		#scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
 		ylab("Bits (AI) ")+
 		xlab("Day")+
 		theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
@@ -1275,7 +1276,7 @@ p3 = ggplot()+
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
 		facet_grid(temperature~invade_monoculture) +ylim(0,2E6) +xlim(0,90) +
-		#scale_color_discrete(name ="", labels = c("Experiment", "Simulation" ) )+
+		scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
 		xlab("Day")+
 		ylab("Algae consumed per N ")
 
@@ -1291,6 +1292,110 @@ grid.draw(rbind(gp1, gp2,gp3))
 dev.off()
 
 #=============================================================================
+#Summary plots: one data point per treatment level
+#=============================================================================
+m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, invade_monoculture != "monoculture")
+
+m1_DIT_sub$res_spp = revalue(m1_DIT_sub$res_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
+m1_DIT_sub$inv_spp = revalue(m1_DIT_sub$inv_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
+
+#Create the summary tables: 
+#For real data: 
+aie_sumR=m1_DIT_sub %>% 
+dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,res_aii,res_aij,inv_aii,inv_aij) %>%
+dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
+	ai1_mean = mean(ai1,na.rm=T), 
+	ai2_mean = mean(ai2,na.rm=T),
+	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
+	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
+
+#Choose either 1 or 2 here: 
+#1. For deterministic sim: 
+aie_sum=mDIT_sub %>% 
+dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,nspp,res_aii,res_aij,inv_aii,inv_aij) %>%
+dplyr::summarize(aiE_mean = aiE[time1==tend*2], #mean(aiE,na.rm=T),
+	ai1_mean = ai1[time1==tend*2],# mean(ai1,na.rm=T), 
+	ai2_mean = ai2[time1==tend*2], #mean(ai2,na.rm=T),
+	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
+	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
+
+#2. For stochastic sim: 
+mDIT_sub2 = subset(mDIT_sub, mDIT_sub$time1 >= 3/4*(tend*2) & mDIT_sub$time1 <= (tend*2)) 
+#mDIT_sub2 = subset(mDIT_sub, mDIT_sub$time1 >= tend+tend/4 & mDIT_sub$time1 <= (tend+tend/2)) 
+aie_sum=mDIT_sub2 %>% 
+dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,nspp,res_aii,res_aij,inv_aii,inv_aij) %>%
+dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
+	ai1_mean =mean(ai1,na.rm=T), 
+	ai2_mean = mean(ai2,na.rm=T),
+	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
+	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
+
+
+#Plots: 
+#Complexity vs. temp.
+ggplot()+ 
+	geom_point( data=aie_sum,  mapping= aes(y =aiE_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sum,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(y =aiE_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	facet_grid(invade_monoculture~.) +
+	scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
+	ylab("Bits (AI) ")+
+	xlab("Temperature")
+	#theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+ggsave("./ave_CompvsTemp_aiE_Novar100.pdf", width = 8, height = 10)
+
+ggplot()+ 
+	geom_point( data=aie_sum,  mapping= aes(y =ai1_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sum,  mapping=aes(y =ai2_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(y =ai1_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(y =ai2_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	facet_grid(invade_monoculture~.) +
+	scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
+	ylab("Bits (AI) ")+
+	xlab("Temperature")
+ggsave("./ave_CompvsTemp_ai1ai2_Novar100.pdf", width = 8, height = 10)
+
+#complexity vs. competition
+ggplot()+ 
+	geom_point( data=aie_sum,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sum,  mapping=aes(x = (inv_aij*res_aij)/(inv_aii*res_aii), y =aiE_mean,  color = interaction( inv_spp, nspp) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(x = (inv_aij*res_aij)/(inv_aii*res_aii), y =aiE_mean,  color = interaction( inv_spp, nspp) ) ) +  
+	facet_grid(invade_monoculture~.) +
+	scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
+	ylab("Bits (AI) ")+
+	xlab("Total competition")
+
+#Competition vs. temp
+ggplot()+ 
+	geom_point( data=aie_sum,  mapping= aes(y =inv_aij*res_aij/(inv_aii*res_aii) , x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sum,  mapping=aes(y = inv_aij*res_aij/(inv_aii*res_aii), x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(y =inv_aij*res_aij/(inv_aii*res_aii) , x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(y = inv_aij*res_aij/(inv_aii*res_aii), x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	facet_grid(invade_monoculture~.)+
+	scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
+	ylab("Total competition ")+
+	xlab("Temperature")
+
+#Competition vs. complexity 2
+ggplot()+ 
+	geom_point( data=mDIT_sub,  mapping= aes(x = (inv_aij_rt*res_aij_rt)/(res_aii_rt*inv_aii_rt), y =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=mDIT_sub,  mapping=aes(x = (inv_aij_rt*res_aij_rt)/(res_aii_rt*inv_aii_rt), y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point(data=aie_sum,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "1", group=interaction(res_spp,replicate_number) ),size=3) +
+	geom_point(data=aie_sum,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "2", group=interaction(inv_spp,replicate_number) ),size=3 ) +
+	geom_point( data=m1_DIT_sub,  mapping= aes(x = (inv_aij*res_aij)/(res_aii*inv_aii), y =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
+	geom_point( data=m1_DIT_sub,  mapping=aes(x = (inv_aij*res_aij)/(res_aii*inv_aii), y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
+	geom_point(data=aie_sumR,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "3", group=interaction(res_spp,replicate_number) ),size=3) +
+	geom_point(data=aie_sumR,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "4", group=interaction(inv_spp,replicate_number) ),size=3 ) +
+	facet_grid(temperature~invade_monoculture)
+
+
+#=============================================================================
+#More detailed (or just messy) plots looking at ecosystem properties: 
+#=============================================================================
+
 m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") #Daphnia at 28 C
 mDIT_sub = subset(mDIT, invade_monoculture != "monoculture")
 
@@ -1351,100 +1456,7 @@ ggplot()+
 
 
 #=============================================================================
-#=============================================================================
-m1_DIT_sub = subset(m1_DIT, invade_monoculture != "monoculture") #Daphnia at 28 C
-mDIT_sub = subset(mDIT, invade_monoculture != "monoculture")
-
-m1_DIT_sub$res_spp = revalue(m1_DIT_sub$res_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
-m1_DIT_sub$inv_spp = revalue(m1_DIT_sub$inv_spp, c("daphnia" = "daphnia_E", "diaphanosoma" = "dia_E" ) )
-
-#Some summary numbers
-#For deterministic sim: 
-aie_sum=mDIT_sub %>% 
-dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,nspp,res_aii,res_aij,inv_aii,inv_aij) %>%
-dplyr::summarize(aiE_mean = aiE[time1==tend*2], #mean(aiE,na.rm=T),
-	ai1_mean = ai1[time1==tend*2],# mean(ai1,na.rm=T), 
-	ai2_mean = ai2[time1==tend*2], #mean(ai2,na.rm=T),
-	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
-	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
-
-#For stochastic sim: 
-mDIT_sub2 = subset(mDIT_sub, mDIT_sub$time1 >= 3/4*(tend*2) & mDIT_sub$time1 <= (tend*2)) 
-#mDIT_sub2 = subset(mDIT_sub, mDIT_sub$time1 >= tend+tend/4 & mDIT_sub$time1 <= (tend+tend/2)) 
-
-aie_sum=mDIT_sub2 %>% 
-dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,nspp,res_aii,res_aij,inv_aii,inv_aij) %>%
-dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
-	ai1_mean =mean(ai1,na.rm=T), 
-	ai2_mean = mean(ai2,na.rm=T),
-	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
-	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
-
-#For real data: 
-aie_sumR=m1_DIT_sub %>% 
-dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp,res_aii,res_aij,inv_aii,inv_aij) %>%
-dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
-	ai1_mean = mean(ai1,na.rm=T), 
-	ai2_mean = mean(ai2,na.rm=T),
-	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
-	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
-
-
-#Competition vs. complexity 2
-ggplot()+ 
-	geom_point( data=mDIT_sub,  mapping= aes(x = (inv_aij_rt*res_aij_rt)/(res_aii_rt*inv_aii_rt), y =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	geom_point( data=mDIT_sub,  mapping=aes(x = (inv_aij_rt*res_aij_rt)/(res_aii_rt*inv_aii_rt), y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	geom_point(data=aie_sum,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "1", group=interaction(res_spp,replicate_number) ),size=3) +
-	geom_point(data=aie_sum,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "2", group=interaction(inv_spp,replicate_number) ),size=3 ) +
-	geom_point( data=m1_DIT_sub,  mapping= aes(x = (inv_aij*res_aij)/(res_aii*inv_aii), y =aiE,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	geom_point( data=m1_DIT_sub,  mapping=aes(x = (inv_aij*res_aij)/(res_aii*inv_aii), y =aiE,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	geom_point(data=aie_sumR,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "3", group=interaction(res_spp,replicate_number) ),size=3) +
-	geom_point(data=aie_sumR,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = "4", group=interaction(inv_spp,replicate_number) ),size=3 ) +
-	facet_grid(temperature~invade_monoculture)
-
-#Complexity vs. temp.
-ggplot()+ 
-	geom_point( data=aie_sum,  mapping= aes(y =aiE_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sum,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
-	geom_point( data=aie_sumR,  mapping= aes(y =aiE_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sumR,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
-	facet_grid(invade_monoculture~.) 
-
-ggplot()+ 
-	geom_point( data=aie_sum,  mapping= aes(y =ai1_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sum,  mapping=aes(y =ai2_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
-	geom_point( data=aie_sumR,  mapping= aes(y =ai1_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sumR,  mapping=aes(y =ai2_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
-	facet_grid(invade_monoculture~.) 
-
-#complexity vs. competition
-ggplot()+ 
-	geom_point( data=aie_sum,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sum,  mapping=aes(x = (inv_aij*res_aij)/(inv_aii*res_aii), y =aiE_mean,  color = interaction( inv_spp, nspp) ) ) +  
-	geom_point( data=aie_sumR,  mapping= aes(x =(inv_aij*res_aij)/(inv_aii*res_aii) , y =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sumR,  mapping=aes(x = (inv_aij*res_aij)/(inv_aii*res_aii), y =aiE_mean,  color = interaction( inv_spp, nspp) ) ) +  
-	facet_grid(invade_monoculture~.) 
-
-#Competition vs. temp
-ggplot()+ 
-	geom_point( data=aie_sum,  mapping= aes(y =inv_aij*res_aij/(inv_aii*res_aii) , x =temperature,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sum,  mapping=aes(y = inv_aij*res_aij/(inv_aii*res_aii), x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
-	geom_point( data=aie_sumR,  mapping= aes(y =inv_aij*res_aij/(inv_aii*res_aii) , x =temperature,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sumR,  mapping=aes(y = inv_aij*res_aij/(inv_aii*res_aii), x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
-	facet_grid(invade_monoculture~.)
-
-
-
-ggplot()+ 
-	geom_point( data=aie_sum,  mapping= aes(x =inv_aij*res_aij/(inv_aii*res_aii) , y=alg_Nres_mean,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sum,  mapping=aes(x = inv_aij*res_aij/(inv_aii*res_aii), y =alg_Ninv_mean,  color = interaction( inv_spp, nspp) ) ) +  
-	#geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = aiE, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
-	#geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	facet_grid(.~invade_monoculture) + ylim(0,8E4)
-
-
-
-
+#Junk section
 #=============================================================================
 m1_DIT_sub = subset(m1_DIT, inv_spp == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia at 28 C
 mDIT_sub = subset(mDIT, inv_spp == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia invasion 
