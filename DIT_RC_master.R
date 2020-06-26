@@ -1168,15 +1168,15 @@ for (f in 1:nwebs){
 	DIT_tmp[,31] = mean(DIT_tmp$alg_perzoo,na.rm=T )
 	
 	#Get the carrying capacity for each scenario: 
-	DIT_tmp[1:(nt2/4),32] = mean(DIT_tmp$N_res[1:(nt2/4)],na.rm=T)
-	DIT_tmp[(nt2/4+1):nt2/2,32] = mean(DIT_tmp$N_res[(nt2/4+1):nt2/2],na.rm=T)
-	DIT_tmp[(nt2/2+1):(nt2*3/4),32] = mean(DIT_tmp$N_res[(nt2/2+1):(nt2*3/4)],na.rm=T)
-	DIT_tmp[(nt2*3/4+1):(nt2),32] = mean(DIT_tmp$N_res[(nt2*3/4+1):(nt2)],na.rm=T)
+	DIT_tmp[1:(nt2/4),32] = mean(DIT_tmp$N_res[(tl*3/4):(nt2/4)],na.rm=T)
+	DIT_tmp[(nt2/4+1):nt2/2,32] = mean(DIT_tmp$N_res[(nt2/4+tl*3/4):(nt2/2) ],na.rm=T)
+	DIT_tmp[(nt2/2+1):(nt2*3/4),32] = mean(DIT_tmp$N_res[(nt2/2+tl*3/4):(nt2*3/4)],na.rm=T)
+	DIT_tmp[(nt2*3/4+1):(nt2),32] = mean(DIT_tmp$N_res[(nt2*3/4+tl*3/4):(nt2)],na.rm=T)
 
-	DIT_tmp[1:(nt2/4),33] = mean(DIT_tmp$N_inv[1:(nt2/4)],na.rm=T)
-	DIT_tmp[(nt2/4+1):nt2/2,33] = mean(DIT_tmp$N_inv[(nt2/4+1):nt2/2],na.rm=T)
-	DIT_tmp[(nt2/2+1):(nt2*3/4),33] = mean(DIT_tmp$N_inv[(nt2/2+1):(nt2*3/4)],na.rm=T)
-	DIT_tmp[(nt2*3/4+1):(nt2),33] = mean(DIT_tmp$N_inv[(nt2*3/4+1):(nt2)],na.rm=T)
+	DIT_tmp[1:(nt2/4),33] = mean(DIT_tmp$N_inv[(tl*3/4):(nt2/4)],na.rm=T)
+	DIT_tmp[(nt2/4+1):nt2/2,33] = mean(DIT_tmp$N_inv[(nt2/4+tl*3/4):(nt2/2)],na.rm=T)
+	DIT_tmp[(nt2/2+1):(nt2*3/4),33] = mean(DIT_tmp$N_inv[(nt2/2+tl*3/4):(nt2*3/4)],na.rm=T)
+	DIT_tmp[(nt2*3/4+1):(nt2),33] = mean(DIT_tmp$N_inv[(nt2*3/4+tl*3/4):(nt2)],na.rm=T)
 
 	#Resident competition
     DIT_tmp[1:(nt2/2),34] = spp_prms$aii[2]#Dia
@@ -1236,7 +1236,7 @@ mDIT_sub = mDIT
 
 
 p1= ggplot()+ 
-		geom_line(data=mDIT_sub, mapping= aes(x = time1-tend+1, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
+		geom_line(data=mDIT_sub, mapping= aes(x = time1-tend+1, y =inv_K,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_line( data=mDIT_sub, mapping=aes(x = time1-tend+1, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =N_res,  color = res_spp, group = interaction(res_spp,replicate_number) ) )+  
 		geom_point(data=m1_DIT_sub, mapping= aes(x = day_n-inv_day+1, y =N_inv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) )+  
@@ -1308,7 +1308,13 @@ dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
 	ai1_mean = mean(ai1,na.rm=T), 
 	ai2_mean = mean(ai2,na.rm=T),
 	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
-	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
+	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T),
+	aiE_se= sqrt(var(aiE,na.rm=T))/length(aiE) ,
+	ai1_se =  sqrt(var(ai1,na.rm=T))/length(ai1), 
+	ai2_se =  sqrt(var(ai2,na.rm=T))/length(ai2),
+	alg_Nres_se =  sqrt(var(alg_per_Nres,na.rm=T))/length(alg_per_Nres),
+	alg_Ninv_se =  sqrt(var(alg_per_Ninv,na.rm=T))/length(alg_per_Nres)) %>% as.data.frame
+
 
 #Choose either 1 or 2 here: 
 #1. For deterministic sim: 
@@ -1317,8 +1323,15 @@ dplyr::group_by(temperature,invade_monoculture,replicate_number, res_spp,inv_spp
 dplyr::summarize(aiE_mean = aiE[time1==tend*2], #mean(aiE,na.rm=T),
 	ai1_mean = ai1[time1==tend*2],# mean(ai1,na.rm=T), 
 	ai2_mean = ai2[time1==tend*2], #mean(ai2,na.rm=T),
-	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
-	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
+	alg_Nres_mean = mean(alg_per_Nres[time1==tend*2],na.rm=T),
+	alg_Ninv_mean = mean(alg_per_Ninv[time1==tend*2],na.rm=T),
+	aiE_se= sqrt(var(aiE[time1==tend*2],na.rm=T))/length(aiE[time1==tend*2]) ,
+	ai1_se =  sqrt(var(ai1[time1==tend*2],na.rm=T))/length(ai1[time1==tend*2]), 
+	ai2_se =  sqrt(var(ai2[time1==tend*2],na.rm=T))/length(ai2[time1==tend*2]),
+	alg_Nres_se =  sqrt(var(alg_per_Nres[time1==tend*2],na.rm=T))/length(alg_per_Nres[time1==tend*2]),
+	alg_Ninv_se =  sqrt(var(alg_per_Ninv[time1==tend*2],na.rm=T))/length(alg_per_Nres[time1==tend*2])) %>% 
+	as.data.frame
+
 
 #2. For stochastic sim: 
 mDIT_sub2 = subset(mDIT_sub, mDIT_sub$time1 >= 3/4*(tend*2) & mDIT_sub$time1 <= (tend*2)) 
@@ -1329,16 +1342,25 @@ dplyr::summarize(aiE_mean = mean(aiE,na.rm=T),
 	ai1_mean =mean(ai1,na.rm=T), 
 	ai2_mean = mean(ai2,na.rm=T),
 	alg_Nres_mean = mean(alg_per_Nres,na.rm=T),
-	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T)) %>% as.data.frame
+	alg_Ninv_mean = mean(alg_per_Ninv,na.rm=T),
+	aiE_se= sqrt(var(aiE,na.rm=T))/length(aiE) ,
+	ai1_se =  sqrt(var(ai1,na.rm=T))/length(ai1), 
+	ai2_se =  sqrt(var(ai2,na.rm=T))/length(ai2),
+	alg_Nres_se =  sqrt(var(alg_per_Nres,na.rm=T))/length(alg_per_Nres),
+	alg_Ninv_se =  sqrt(var(alg_per_Ninv,na.rm=T))/length(alg_per_Nres)) %>% as.data.frame
 
 
 #Plots: 
 #Complexity vs. temp.
 ggplot()+ 
-	geom_point( data=aie_sum,  mapping= aes(y =aiE_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sum,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
-	geom_point( data=aie_sumR,  mapping= aes(y =aiE_mean, x =temperature,  color = interaction( res_spp, nspp ) ) )  +
-	geom_point( data=aie_sumR,  mapping=aes(y =aiE_mean, x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	geom_point( data=aie_sum,  mapping= aes( x =temperature,y =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
+	#geom_errorbar(data=aie_sum, mapping= aes(x =temperature, y =aiE_mean, ymin=aiE_mean-aiE_se, ymax=aiE_mean+aiE_se, color = interaction( res_spp, nspp ) ) ) +	
+	geom_point( data=aie_sum,  mapping=aes(x =temperature,y =aiE_mean,   color = interaction( inv_spp, nspp) ) ) +  
+	#geom_errorbar(data=aie_sum,  mapping=aes(x =temperature,y =aiE_mean, xmin =temperature, xmax=temperature,  ymin=aiE_mean-aiE_se, ymax=aiE_mean+aiE_se,color = interaction( inv_spp, nspp ))) +	
+	geom_point( data=aie_sumR,  mapping= aes( x =temperature,y =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
+	#geom_errorbar(data=aie_sumR,  mapping=aes(x =temperature, y =aiE_mean,  ymin=aiE_mean-aiE_se, ymax=aiE_mean+aiE_se,color = interaction( res_spp, nspp )) ) +
+	geom_point( data=aie_sumR,  mapping=aes(x =temperature, y =aiE_mean,   color = interaction( inv_spp, nspp) ) ) +  
+	#geom_errorbar(data=aie_sumR,  mapping=aes(x =temperature, y =aiE_mean, ymin=aiE_mean-aiE_se, ymax=aiE_mean+aiE_se,color = interaction( inv_spp, nspp ))) +
 	facet_grid(invade_monoculture~.) +
 	scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
 	ylab("Bits (AI) ")+
@@ -1355,7 +1377,76 @@ ggplot()+
 	scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
 	ylab("Bits (AI) ")+
 	xlab("Temperature")
-ggsave("./ave_CompvsTemp_ai1ai2_Novar100.pdf", width = 8, height = 10)
+ggsave("./ave_CompvsTemp_ai1ai2_var100.pdf", width = 8, height = 10)
+
+#Algal consumption vs. temp.
+ggplot()+ 
+	geom_point( data=aie_sum,  mapping= aes(y =alg_Nres_mean , x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sum,  mapping=aes(y =alg_Ninv_mean , x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(y =alg_Nres_mean , x =temperature,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(y =alg_Ninv_mean , x =temperature,  color = interaction( inv_spp, nspp) ) ) +  
+	facet_grid(invade_monoculture~.) + scale_y_log10()+
+	scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
+	ylab("Algae consumed per N")+
+	xlab("Temperature")
+	#theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+ggsave("./ave_AlgvsTemp_aiE_var100.pdf", width = 8, height = 10)
+
+
+#################################
+# Moore plot
+##################################
+#Algal consumption vs. complexity. With GAMs for curves
+
+m1_DIT_sub = subset(m1_DIT, invade_monoculture == "daph invade" & inv_spp == "daphnia") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, invade_monoculture == "daph invade"& inv_spp == "daphnia")
+
+n1 = data.frame( ai2_mean = seq(0.1,7,0.1) )
+#g1 = gam(alg_Ninv_mean~s(ai2_mean,k=4),data=aie_sum,family=Gamma(link=log) )
+#g1 = gam(I(log(alg_Ninv_mean) )~s( (log(ai2_mean)),k=4),data=aie_sum)
+g1 = gam(alg_Ninv_mean~s(ai2_mean,k=4),data=aie_sum)
+g1_pred = cbind(n1, alg_Ninv_mean = as.vector(predict.gam(g1, newdata=n1,  type= "response") ) )
+
+#g2 = gam(alg_Ninv_mean~s(ai2_mean,k=4),data=aie_sumR,family=Gamma(link=log) )
+#g2 = gam(I(log(alg_Ninv_mean) )~s( (log(ai2_mean)),k=4),data=aie_sumR)
+g2 = gam(alg_Ninv_mean~s(ai2_mean,k=3),data=aie_sumR )
+g2_pred = cbind( n1,  alg_Ninv_mean = as.vector(predict.gam(g2, newdata=n1,  type= "response") ) )
+
+
+ggplot()+ 
+	#geom_point( data=aie_sum,  mapping= aes(y =alg_Nres_mean , x =ai1_mean,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sum,  mapping=aes(y =(alg_Ninv_mean) , x =(ai2_mean),  color = interaction( inv_spp, nspp) ),size = 3 ) +  
+
+	#geom_point( data=aie_sumR,  mapping= aes(y =alg_Nres_mean , x =ai1_mean,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(y =(alg_Ninv_mean) , x =(ai2_mean),  color = interaction( inv_spp, nspp) ),size = 3 ) +  
+	scale_color_discrete(name ="", labels = c("GAM fit", "Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
+	scale_y_log10()+scale_x_log10() +
+
+	geom_line( data=g2_pred,  mapping=aes(y =alg_Ninv_mean , x =ai2_mean,  color = interaction( inv_spp, nspp) ) ) +  
+	geom_line( data=g1_pred,  mapping=aes(y =alg_Ninv_mean , x =ai2_mean,  color = interaction( inv_spp, nspp) ) ) +  
+
+	#facet_grid(invade_monoculture~.) +
+	
+	ylab("Cost per component (algae consumed/individual) ")+
+	xlab("Complexity (bits) ")+
+	theme(axis.text=element_text(size=15), axis.title=element_text(size=18 ))
+	#theme(axis.title.x=element_blank(),axis.text.x = element_blank(), axis.ticks = element_blank())
+ggsave("./ave_AlgvsComp_ai1ai2_var100_GAMS.pdf", width = 8, height = 8)
+
+
+#Algal consumption vs. competition
+
+ggplot()+ 
+	geom_point( data=aie_sum,  mapping= aes(y =alg_Nres_mean , x =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sum,  mapping=aes(y =alg_Ninv_mean , x =aiE_mean,  color = interaction( inv_spp, nspp) ) ) +  
+	geom_point( data=aie_sumR,  mapping= aes(y =alg_Nres_mean , x =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
+	geom_point( data=aie_sumR,  mapping=aes(y =alg_Ninv_mean , x =aiE_mean,  color = interaction( inv_spp, nspp) ) ) +  
+	facet_grid(invade_monoculture~.) + scale_y_log10()+
+	scale_color_discrete(name ="", labels = c("Daph Experiment", "Daph Simulation","Dia Experiment", "Dia Simulation" ) )+
+	ylab("Algae consumed per N")+
+	xlab("Bits (AI) ")
+ggsave("./ave_AlgvsComp_aiE_Novar100.pdf", width = 8, height = 10)
+
 
 #complexity vs. competition
 ggplot()+ 
@@ -1409,7 +1500,7 @@ ggplot()+
 	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = ai1, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
 	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = ai2, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	facet_grid(temperature~invade_monoculture)  +ylim(0,1E6)
+	facet_grid(temperature~invade_monoculture)  +ylim(0,1E4)
 	#+ylim(0,0.001)
 
 #Consumption vs. complexity 2
@@ -1418,7 +1509,7 @@ ggplot()+
 	geom_point( data=mDIT_sub, shape = 0, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
 	geom_point( data=m1_DIT_sub,shape = 18, mapping= aes(x = aiE, y =alg_per_Nres,  color = res_spp, group = interaction(res_spp,replicate_number) ) ) +
 	geom_point( data=m1_DIT_sub, shape = 18, mapping=aes(x = aiE, y =alg_per_Ninv,  color = inv_spp, group = interaction(inv_spp,replicate_number) ) ) +  
-	facet_grid(temperature~invade_monoculture)  +ylim(0,5E5)
+	facet_grid(temperature~invade_monoculture)  +ylim(0,5E4)
 
 
 #Distance from Equilbrium vs. complexity 1
@@ -1458,8 +1549,8 @@ ggplot()+
 #=============================================================================
 #Junk section
 #=============================================================================
-m1_DIT_sub = subset(m1_DIT, inv_spp == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia at 28 C
-mDIT_sub = subset(mDIT, inv_spp == "daphnia" & temperature == 28 & invade_monoculture == "daph invade") #Daphnia invasion 
+m1_DIT_sub = subset(m1_DIT, inv_spp == "daphnia" & temperature == 26 & invade_monoculture == "daph invade") #Daphnia at 28 C
+mDIT_sub = subset(mDIT, inv_spp == "daphnia" & temperature == 26 & invade_monoculture == "daph invade") #Daphnia invasion 
 
 ggplot()+ 
 	geom_point( data=mDIT_sub, shape = 0, mapping= aes(x = ai2, y =alg_per_Nres,  color = time1))
