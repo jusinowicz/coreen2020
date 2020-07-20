@@ -222,7 +222,9 @@ f_lvii = Ndiff ~ N
 
 
 #3. *** Leslie-Gower ***
-#f_lvii = formula ( Ndiff ~  ri/(1+aii*N) )
+f_lvii_nls = formula ( Ndiff ~  ri/(1+aii*N) )
+lvii_prms = c("ri","aii")
+
 
 ####################################
 #Interspecific competition models
@@ -234,7 +236,8 @@ f_lvii = Ndiff ~ N
 f_lvij = Ndiff ~ N_res +0
 
 #2. Leslie Gower, aij only. 
-#f_lvij = formula ( Ndiff ~  ri/(1+aij*N_res) )
+f_lvij_nls = formula ( Ndiff ~  ri/(1+aij*N_res) )
+lvij_prms = c("ri","aij")
 
 #3. LV, aii and aij
 #f_lvij = formula ( Ndiff ~  ri/(1+aii*N_inv+aij*N_res) )
@@ -256,14 +259,21 @@ cR_dia = vector("list", 6);cR_dia_pred = NULL;
 #Fit competition models per temperature 
 #Intraspecific
 igr_daph = vector("list", 6); lvii_daph = vector("list", 6);igr_daph_pred = NULL
-lvii_daph_pred = NULL
+lvii_daph_lm = vector("list", 6);
+lvii_daph_pred = NULL; lvii_daph_pred_lm = NULL
+
 igr_dia = vector("list", 6);lvii_dia = vector("list", 6);igr_dia_pred = NULL;
-lvii_dia_pred = NULL;
+lvii_dia_lm = vector("list", 6);
+lvii_dia_pred = NULL; lvii_dia_pred_lm = NULL;
+
 #Interspecific
 igrij_daph = vector("list", 6);lvij_daph = vector("list", 6);igrij_daph_pred = NULL;
-lvij_daph_pred = NULL;
+lvij_daph_lm = vector("list", 6)
+lvij_daph_pred = NULL; lvij_daph_pred_lm = NULL;
+
 igrij_dia = vector("list", 6); lvij_dia = vector("list", 6); igrij_dia_pred = NULL;
-lvij_dia_pred = NULL;
+lvij_dia_lm = vector("list", 6)
+lvij_dia_pred = NULL; lvij_dia_pred_lm = NULL;
 
 #par(mfrow=c(6,1),oma = c(5,4,0,0) + 0.1,mar = c(0,0,1,1) + 0.1)
 
@@ -355,6 +365,7 @@ for(t in 1:ntemps) {
     igr_dia_pred = rbind(igr_dia_pred, igr_dia_tmp)
 	}
 	
+	#Intraspecific competition
 	#Intraspecific competition, when fitting to the above model fits igr_specis 
 	#instead of directly to the data. 
 	#Add Ndiff
@@ -369,27 +380,54 @@ for(t in 1:ntemps) {
  	# daph_tmpb_inv = subset(daph_tmpb, day_n <= (inv_end-inv_day) )
  	# dia_tmpb_inv = subset(dia_tmpb, day_n <= (inv_end-inv_day) )
 
- 	#Assume that only positive increments reflect growth? 
+ # 	#Assume that only positive increments reflect growth? 
 	daph_tmpb_inv  = subset(daph_tmpb , Ndiff>0)
 	dia_tmpb_inv= subset(dia_tmpb, Ndiff>0)
 
-	lvii_daph[[t]] = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
-	lvii_daph[[t]]$new_fit$N = seq(1, max(daph_tmpb_inv$N,na.rm=T) ) 
-	lvii_daph[[t]]$new_fit$N_pred = lvii_daph[[t]]$new_fit$N* coef(lvii_daph[[t]])[2] + coef(lvii_daph[[t]])[1]
+	lvii_daph_lm[[t]] = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
+	lvii_daph_lm[[t]]$new_fit$N = seq(1, max(daph_tmpb_inv$N,na.rm=T) ) 
+	lvii_daph_lm[[t]]$new_fit$N_pred = lvii_daph_lm[[t]]$new_fit$N* coef(lvii_daph_lm[[t]])[2] + coef(lvii_daph_lm[[t]])[1]
 	#lvii_daph[[t]]$new_fit$N_pred = lvii_daph[[t]]$new_fit$N* coef(lvii_daph[[t]])+1
 	lvii_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
-		 			N=lvii_daph[[t]]$new_fit$N,  
-		 			Ndiff= lvii_daph[[t]]$new_fit$N_pred )
-    lvii_daph_pred = rbind(lvii_daph_pred, lvii_daph_tmp)
+		 			N=lvii_daph_lm[[t]]$new_fit$N,  
+		 			Ndiff= lvii_daph_lm[[t]]$new_fit$N_pred )
+    lvii_daph_pred_lm = rbind(lvii_daph_pred, lvii_daph_tmp)
 
-	lvii_dia[[t]] = lm(f_lvii,dia_tmpb_inv)#, offset = rep(1,length(dia_tmpb_inv$N))  )
-	lvii_dia[[t]]$new_fit$N = seq(1, max(dia_tmpb_inv$N,na.rm=T) ) 
-	lvii_dia[[t]]$new_fit$N_pred = lvii_dia[[t]]$new_fit$N* coef(lvii_dia[[t]])[2] + coef(lvii_dia[[t]])[1]
+	lvii_dia_lm[[t]] = lm(f_lvii,dia_tmpb_inv)#, offset = rep(1,length(dia_tmpb_inv$N))  )
+	lvii_dia_lm[[t]]$new_fit$N = seq(1, max(dia_tmpb_inv$N,na.rm=T) ) 
+	lvii_dia_lm[[t]]$new_fit$N_pred = lvii_dia_lm[[t]]$new_fit$N* coef(lvii_dia_lm[[t]])[2] + coef(lvii_dia_lm[[t]])[1]
 	#lvii_dia[[t]]$new_fit$N_pred = lvii_dia[[t]]$new_fit$N* coef(lvii_dia[[t]]) + 1
 	lvii_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
-		 			N=lvii_dia[[t]]$new_fit$N,  
-		 			Ndiff= lvii_dia[[t]]$new_fit$N_pred )
+		 			N=lvii_dia_lm[[t]]$new_fit$N,  
+		 			Ndiff= lvii_dia_lm[[t]]$new_fit$N_pred )
+    lvii_dia_pred_lm = rbind(lvii_dia_pred, lvii_dia_tmp)
+
+	lm1 = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
+    test1 = NULL
+	test1= get_mod_fit( mod_data =daph_tmpb_inv, mod_fit = f_lvii_nls, mod_prms = lvii_prms,
+					prm_start = c(1.1, 0.5 ), mod_x = "N", fixed = list(ri = max(daph_tmpb_inv$Ndiff,na.rm=T ) ) )
+	#fixed = list(ri = unname(coef(lm1)[1] ) )
+
+	if(!is.null(test1)) { 
+	lvii_daph[[t]] =test1
+	lvii_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
+		 			N = lvii_daph[[t]]$new_fit$N,  
+		 			Ndiff = lvii_daph[[t]]$new_fit$N_pred)
+    lvii_daph_pred = rbind(lvii_daph_pred, lvii_daph_tmp)
+	}
+
+	lm1 = lm(f_lvii, dia_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
+	test1 = NULL
+	test1= get_mod_fit( mod_data =dia_tmpb_inv, mod_fit = f_lvii_nls, mod_prms = lvii_prms,
+					prm_start = c(1.1, 0.5 ), mod_x = "N",fixed = list(ri = max(daph_tmpb_inv$Ndiff,na.rm=T  ) ))
+
+	if(!is.null(test1)) { 
+	lvii_dia[[t]] =test1
+	lvii_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
+		 			N = lvii_dia[[t]]$new_fit$N,  
+		 			Ndiff = lvii_dia[[t]]$new_fit$N_pred)
     lvii_dia_pred = rbind(lvii_dia_pred, lvii_dia_tmp)
+	}
 	#=============================================================================
 	#Interspecific competition
 	#=============================================================================
@@ -439,21 +477,47 @@ for(t in 1:ntemps) {
 	daph_inv_tmp = subset(daph_inv_tmp, Ndiff>0)
 	dia_inv_tmp = subset(dia_inv_tmp, Ndiff>0)
 
-	lvij_daph[[t]] = lm(f_lvij, daph_inv_tmp, offset = rep(1,length(daph_inv_tmp$N_res))  )
-	lvij_daph[[t]]$new_fit$N_res = seq(1, max(daph_inv_tmp$N_res,na.rm=T) ) 
-	lvij_daph[[t]]$new_fit$N_pred = lvij_daph[[t]]$new_fit$N_res* coef(lvij_daph[[t]]) + 1
+	lvij_daph_lm[[t]] = lm(f_lvij, daph_inv_tmp, offset = rep(1,length(daph_inv_tmp$N_res))  )
+	lvij_daph_lm[[t]]$new_fit$N_res = seq(1, max(daph_inv_tmp$N_res,na.rm=T) ) 
+	lvij_daph_lm[[t]]$new_fit$N_pred = lvij_daph_lm[[t]]$new_fit$N_res* coef(lvij_daph_lm[[t]]) + 1
 	lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
-		 			N_res=lvij_daph[[t]]$new_fit$N_res,  
-		 			Ndiff= lvij_daph[[t]]$new_fit$N_pred )
-    lvij_daph_pred = rbind(lvij_daph_pred, lvij_daph_tmp)
+		 			N_res=lvij_daph_lm[[t]]$new_fit$N_res,  
+		 			Ndiff= lvij_daph_lm[[t]]$new_fit$N_pred )
+    lvij_daph_pred_lm = rbind(lvij_daph_pred, lvij_daph_tmp)
 	
-	lvij_dia[[t]] = lm(f_lvij,dia_inv_tmp, offset = rep(1,length(dia_inv_tmp$N_res))  )
-	lvij_dia[[t]]$new_fit$N_res = seq(1, max(dia_inv_tmp$N_res,na.rm=T) ) 
-	lvij_dia[[t]]$new_fit$N_pred = lvij_dia[[t]]$new_fit$N_res* coef(lvij_dia[[t]]) + 1
+	lvij_dia_lm[[t]] = lm(f_lvij,dia_inv_tmp, offset = rep(1,length(dia_inv_tmp$N_res))  )
+	lvij_dia_lm[[t]]$new_fit$N_res = seq(1, max(dia_inv_tmp$N_res,na.rm=T) ) 
+	lvij_dia_lm[[t]]$new_fit$N_pred = lvij_dia_lm[[t]]$new_fit$N_res* coef(lvij_dia_lm[[t]]) + 1
 	lvij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
-		 			N_res=lvij_dia[[t]]$new_fit$N_res,  
-		 			Ndiff= lvij_dia[[t]]$new_fit$N_pred )
+		 			N_res=lvij_dia_lm[[t]]$new_fit$N_res,  
+		 			Ndiff= lvij_dia_lm[[t]]$new_fit$N_pred )
+    lvij_dia_pred_lm = rbind(lvij_dia_pred, lvij_dia_tmp)
+
+	lm1 = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
+    test1 = NULL
+	test1= get_mod_fit( mod_data =daph_inv_tmp, mod_fit = f_lvij_nls, mod_prms = lvij_prms,
+					prm_start = c(1.1, 0.5 ), mod_x = "N_res", fixed = list(ri = max(daph_tmpb_inv$Ndiff,na.rm=T  )) )
+
+	if(!is.null(test1)) { 
+	lvij_daph[[t]] =test1
+	lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
+		 			N_res = lvij_daph[[t]]$new_fit$N_res,  
+		 			Ndiff = lvij_daph[[t]]$new_fit$N_pred)
+    lvij_daph_pred = rbind(lvij_daph_pred, lvij_daph_tmp)
+	}
+
+	lm1 = lm(f_lvii, dia_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
+	test1 = NULL
+	test1= get_mod_fit( mod_data =dia_inv_tmp, mod_fit = f_lvij_nls, mod_prms = lvij_prms,
+					prm_start = c(1.1, 0.5 ), mod_x = "N_res", fixed = list(ri = max(daph_tmpb_inv$Ndiff,na.rm=T  ) ) )
+
+	if(!is.null(test1)) { 
+	lvij_dia[[t]] =test1
+	lvij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
+		 			N_res = lvij_dia[[t]]$new_fit$N_res,  
+		 			Ndiff = lvij_dia[[t]]$new_fit$N_pred)
     lvij_dia_pred = rbind(lvij_dia_pred, lvij_dia_tmp)
+	}
 
 	#Output
 	print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
@@ -476,6 +540,7 @@ cl_pred = rbind(cl_daph_pred,cl_dia_pred)
 
 #Growth rate functions
 cR_pred = rbind(cR_daph_pred,cR_dia_pred)
+igr_pred = rbind(igr_daph_pred,igr_dia_pred)
 
 #competition
 lvii_pred = rbind(lvii_daph_pred, lvii_dia_pred)
@@ -497,22 +562,31 @@ ggplot(cl_plot, aes(x = N, y =algae_abundance/algae_start, color = species) )+ #
   xlab("Zooplankton abundance ")+
   ylab("Algal consumption rate")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-#ggsave("./algal_consump3_diaDaph.pdf", width = 8, height = 10)
+ggsave("./algal_consump3_diaDaph.pdf", width = 8, height = 10)
 
 #=============================================================================
 #Intrinsic growth rate functions: 
-#Separate panels
-#Pick the appropriate first line: 
-#ggplot(cl_plot, aes(x = day_n, y =N, color = species) ) + #1. 
-#ggplot(cl_plot, aes(x = Adiff, y =N, color = species) ) + #2. 
+#Algae vs. zooplankton
 ggplot(cl_plot, aes(x = algae_abundance, y =N, color = species) ) + #2. 
   geom_point( )+ facet_grid(temperature~species)+ 
   geom_line(data= cR_pred, mapping= aes(x = algae_abundance, y =N_pred, color=species) )+
   facet_grid(temperature~species)+ #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
-  xlab("Zooplankton abundance ")+
-  ylab("Time")+
+  xlab("Algal abundance")+ 
+  ylab("Zooplankton abundance ")+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-#ggsave("./intrinsicR_diaDaph2.pdf", width = 8, height = 10)
+ggsave("./intrinsicR_diaDaph2.pdf", width = 8, height = 10)
+
+#Intrinsic growth rate functions: 
+#Separate panels
+#Pick the appropriate first line: 
+ggplot(cl_plot, aes(x = day_n, y =N, color = species) ) + #1. 
+  geom_point( )+ facet_grid(temperature~species)+ 
+  geom_line(data= igr_pred, mapping= aes(x = day_n, y =N, color=species) )+
+  facet_grid(temperature~species)+ #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
+  xlab("Time")+ 
+  ylab("Zooplankton abundance ")+
+  theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./intrinsicR_time_diaDaph2.pdf", width = 8, height = 10)
 
 #=============================================================================
 #Competition models 
@@ -527,7 +601,7 @@ ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2.
   xlab("Zooplankton abundance ")+
   ylab("Growth rate")+  xlim(0,60)+
   theme(strip.background = element_rect(colour=NA, fill=NA))
-#ggsave("./intrinsicR_diaDaph2.pdf", width = 8, height = 10)
+ggsave("./lvii_diaDaph2.pdf", width = 8, height = 10)
 
 ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2. 
   geom_point( )+
@@ -536,6 +610,7 @@ ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2.
   xlab("Zooplankton abundance ") +
   ylab("Growth rate")+  xlim(0,60)+
   theme(strip.background = element_rect(colour=NA, fill=NA))
+ggsave("./lvij_diaDaph2.pdf", width = 8, height = 10)
 
 #=============================================================================
 #STAGE 3: Theoretical simulations of population dynamics. 
@@ -1435,7 +1510,6 @@ ggsave("./ave_AlgvsComp_ai1ai2_var100_GAMS.pdf", width = 8, height = 8)
 
 
 #Algal consumption vs. competition
-
 ggplot()+ 
 	geom_point( data=aie_sum,  mapping= aes(y =alg_Nres_mean , x =aiE_mean,  color = interaction( res_spp, nspp ) ) )  +
 	geom_point( data=aie_sum,  mapping=aes(y =alg_Ninv_mean , x =aiE_mean,  color = interaction( inv_spp, nspp) ) ) +  

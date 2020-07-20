@@ -132,14 +132,6 @@ get_new_inv = function (m1_data_long, species1, temperature,inv_day,inv_end ) {
 get_mod_fit = function ( mod_data, mod_fit, mod_prms, prm_start, mod_x, 
   lm_mod = NULL, fixed = NULL) {
 
-  mpl = length ( mod_prms)
-  start1 = vector("list",mpl)
-
-  #Make the list of initial model values. 
-  for ( n in 1:mpl ){ 
-    start1[[n]] = prm_start[n]
-    names(start1)[n] = mod_prms[n]
-  }
 
   #Check to see if any fixed parameters have been passed. If so, assign them. 
   if( !is.null(fixed)) { 
@@ -147,6 +139,20 @@ get_mod_fit = function ( mod_data, mod_fit, mod_prms, prm_start, mod_x,
     for ( n in 1:nfixed) {
       assign(paste(names(fixed)[n]), unlist(c(fixed[n],recursive =T ) ) ) 
     }
+    #Change the length of the parameter vector
+    prm_start = prm_start[-(mod_prms == names(fixed))]
+    mod_prms = mod_prms[-(mod_prms == names(fixed))] 
+
+  }
+
+  #Initial parameters
+  mpl = length ( mod_prms)
+  start1 = vector("list",mpl)
+
+  #Make the list of initial model values. 
+  for ( n in 1:mpl ){ 
+    start1[[n]] = prm_start[n]
+    names(start1)[n] = mod_prms[n]
   }
 
   #Fit the model with NLS
