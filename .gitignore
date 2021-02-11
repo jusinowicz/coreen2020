@@ -3,3 +3,4 @@
 *.var
 *.pdf
 *.png
+.DS_Store
