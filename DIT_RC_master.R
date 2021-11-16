@@ -384,6 +384,13 @@ for(t in 1:ntemps) {
 	daph_tmpb_inv  = subset(daph_tmpb , Ndiff>0)
 	dia_tmpb_inv= subset(dia_tmpb, Ndiff>0)
 
+	#Log-transform data:
+	daph_tmpb_inv$Ndiff = log(daph_tmpb_inv$Ndiff)
+	daph_tmpb_inv$N = log(daph_tmpb_inv$N)
+	dia_tmpb_inv$Ndiff = log(dia_tmpb_inv$Ndiff)
+	dia_tmpb_inv$N = log(dia_tmpb_inv$N)
+
+
 	lvii_daph_lm[[t]] = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
 	lvii_daph_lm[[t]]$new_fit$N = seq(1, max(daph_tmpb_inv$N,na.rm=T) ) 
 	lvii_daph_lm[[t]]$new_fit$N_pred = lvii_daph_lm[[t]]$new_fit$N* coef(lvii_daph_lm[[t]])[2] + coef(lvii_daph_lm[[t]])[1]
@@ -403,9 +410,18 @@ for(t in 1:ntemps) {
     lvii_dia_pred_lm = rbind(lvii_dia_pred, lvii_dia_tmp)
 
 	lm1 = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
-    test1 = NULL
+
+	#Un-transform data:
+	daph_tmpb_inv$Ndiff = exp(daph_tmpb_inv$Ndiff)
+	daph_tmpb_inv$N = exp(daph_tmpb_inv$N)
+
+  test1 = NULL
+  #Two different ways to fix the intercept: 
+  ri = coef(lvii_daph_lm[[t]])[1]  #<-- tends to produce a lower aii
+  #ri = max(daph_tmpb_inv$Ndiff,na.rm=T )
+
 	test1= get_mod_fit( mod_data =daph_tmpb_inv, mod_fit = f_lvii_nls, mod_prms = lvii_prms,
-					prm_start = c(1.1, 0.5 ), mod_x = "N", fixed = list(ri = max(daph_tmpb_inv$Ndiff,na.rm=T ) ) )
+					prm_start = c(1.1, 0.5 ), mod_x = "N" )
 	#fixed = list(ri = unname(coef(lm1)[1] ) )
 
 	if(!is.null(test1)) { 
@@ -417,9 +433,18 @@ for(t in 1:ntemps) {
 	}
 
 	lm1 = lm(f_lvii, dia_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
+
+	#Untransform data
+	dia_tmpb_inv$Ndiff = exp(dia_tmpb_inv$Ndiff)
+	dia_tmpb_inv$N = exp(dia_tmpb_inv$N)
+
+  #Two different ways to fix the intercept: 
+  ri = coef(lvii_dia_lm[[t]])[1]  #<-- tends to produce a lower aii
+  #ri = max(dia_tmpb_inv$Ndiff,na.rm=T )
+
 	test1 = NULL
 	test1= get_mod_fit( mod_data =dia_tmpb_inv, mod_fit = f_lvii_nls, mod_prms = lvii_prms,
-					prm_start = c(1.1, 0.5 ), mod_x = "N",fixed = list(ri = max(daph_tmpb_inv$Ndiff,na.rm=T  ) ))
+					prm_start = c(1.1, 0.5 ), mod_x = "N",fixed = list(ri = ri ))
 
 	if(!is.null(test1)) { 
 	lvii_dia[[t]] =test1
@@ -428,6 +453,8 @@ for(t in 1:ntemps) {
 		 			Ndiff = lvii_dia[[t]]$new_fit$N_pred)
     lvii_dia_pred = rbind(lvii_dia_pred, lvii_dia_tmp)
 	}
+
+
 	#=============================================================================
 	#Interspecific competition
 	#=============================================================================
@@ -477,15 +504,25 @@ for(t in 1:ntemps) {
 	daph_inv_tmp = subset(daph_inv_tmp, Ndiff>0)
 	dia_inv_tmp = subset(dia_inv_tmp, Ndiff>0)
 
-	lvij_daph_lm[[t]] = lm(f_lvij, daph_inv_tmp, offset = rep(1,length(daph_inv_tmp$N_res))  )
+	#Log-transform data:
+	daph_inv_tmp$Ndiff = log(daph_inv_tmp$Ndiff)
+	daph_inv_tmp$N_res = log(daph_inv_tmp$N_res)
+	dia_inv_tmp$Ndiff = log(dia_inv_tmp$Ndiff)
+	dia_inv_tmp$N_res = log(dia_inv_tmp$N_res)
+
+	#Fix the y intercept based on monoculture models: 
+	y1_daph = max(c(1, coef(lvii_daph_lm[[t]])[1], coef(lvii_daph[[t]]$fit_mod )[1] ),na.rm=T )
+	lvij_daph_lm[[t]] = lm(f_lvij, daph_inv_tmp, offset = rep(y1,length(daph_inv_tmp$N_res))  )
+	#lvij_daph_lm[[t]] = lm(f_lvij, daph_inv_tmp)
 	lvij_daph_lm[[t]]$new_fit$N_res = seq(1, max(daph_inv_tmp$N_res,na.rm=T) ) 
 	lvij_daph_lm[[t]]$new_fit$N_pred = lvij_daph_lm[[t]]$new_fit$N_res* coef(lvij_daph_lm[[t]]) + 1
 	lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
 		 			N_res=lvij_daph_lm[[t]]$new_fit$N_res,  
 		 			Ndiff= lvij_daph_lm[[t]]$new_fit$N_pred )
     lvij_daph_pred_lm = rbind(lvij_daph_pred, lvij_daph_tmp)
-	
-	lvij_dia_lm[[t]] = lm(f_lvij,dia_inv_tmp, offset = rep(1,length(dia_inv_tmp$N_res))  )
+
+	y1_dia = max(c(1, coef(lvii_dia_lm[[t]])[1], coef(lvii_dia[[t]]$fit_mod )[1] ),na.rm=T )	
+	lvij_dia_lm[[t]] = lm(f_lvij,dia_inv_tmp, offset = rep(y1,length(dia_inv_tmp$N_res))  )
 	lvij_dia_lm[[t]]$new_fit$N_res = seq(1, max(dia_inv_tmp$N_res,na.rm=T) ) 
 	lvij_dia_lm[[t]]$new_fit$N_pred = lvij_dia_lm[[t]]$new_fit$N_res* coef(lvij_dia_lm[[t]]) + 1
 	lvij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
@@ -493,6 +530,9 @@ for(t in 1:ntemps) {
 		 			Ndiff= lvij_dia_lm[[t]]$new_fit$N_pred )
     lvij_dia_pred_lm = rbind(lvij_dia_pred, lvij_dia_tmp)
 
+ #Two different ways to fix the intercept: 
+  ri = coef(lvii_daph_lm[[t]])[1]  #<-- tends to produce a lower aii
+  #ri = max(daph_tmpb_inv$Ndiff,na.rm=T )
 	lm1 = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
     test1 = NULL
 	test1= get_mod_fit( mod_data =daph_inv_tmp, mod_fit = f_lvij_nls, mod_prms = lvij_prms,
@@ -506,6 +546,9 @@ for(t in 1:ntemps) {
     lvij_daph_pred = rbind(lvij_daph_pred, lvij_daph_tmp)
 	}
 
+ #Two different ways to fix the intercept: 
+  ri = coef(lvii_dia_lm[[t]])[1]  #<-- tends to produce a lower aii
+  #ri = max(daph_tmpb_inv$Ndiff,na.rm=T )
 	lm1 = lm(f_lvii, dia_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
 	test1 = NULL
 	test1= get_mod_fit( mod_data =dia_inv_tmp, mod_fit = f_lvij_nls, mod_prms = lvij_prms,
@@ -727,14 +770,14 @@ for (w in 1:nwebs){
 	aij_rc[w,] = (10E6*spp_prms$cC[1,]*spp_prms$cC[1,2:1]*spp_prms$rC[1,])
 
 	#Phenomenological alphas.
-  	aii_all[w,1] = abs(coef(lvii_daph[[w]])[2])
-  	aii_all[w,2] = abs(coef(lvii_dia[[w]])[2])
-  	aij_all[w,1] = abs(coef(lvij_daph[[w]])[1])
-  	aij_all[w,2] = abs(coef(lvij_dia[[w]])[1])
+  	aii_all[w,1] = abs(coef(lvii_daph[[w]]$fit_mod)[1])
+  	aii_all[w,2] = abs(coef(lvii_dia[[w]]$fit_mod)[1])
+  	aij_all[w,1] = abs(coef(lvij_daph[[w]]$fit_mod)[1])
+  	aij_all[w,2] = abs(coef(lvij_dia[[w]]$fit_mod)[1])
 
-  	if(w==1){aij_all[w,2]=3*aij_all[w,2]}
-  	if(w<5){aij_all[w,2]=2*aij_all[w,2]}
-	if(w==5){aij_all[w,2]=aij_all[w,1]; aii_all[w,1]=aii_all[(w-1),1]}
+ #  	if(w==1){aij_all[w,2]=3*aij_all[w,2]}
+ #  	if(w<5){aij_all[w,2]=2*aij_all[w,2]}
+	# if(w==5){aij_all[w,2]=aij_all[w,1]; aii_all[w,1]=aii_all[(w-1),1]}
 
 	# The trick now is to figure out how to adjust the RC alphas to match the phenomenological
 	# alphas by determining an appropriate R1 and the properties of a fictitious resource 2.  
