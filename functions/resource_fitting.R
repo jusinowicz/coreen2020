@@ -172,8 +172,7 @@ get_mod_fit = function ( mod_data, mod_fit, mod_prms, prm_start, mod_x,
 
   #Fitting data:
   #Sequence of data to predict over
-  y_tmp =seq(min(mod_data[[paste(mod_x)]],na.rm=T),
-    max(mod_data[[paste(mod_x)]],na.rm=T),1 )
+  y_tmp =seq(1, max(mod_data[[paste(mod_x)]],na.rm=T),1 )
 
   fit_dat = list(y_tmp)
   names(fit_dat)[1] = mod_x

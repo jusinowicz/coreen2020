@@ -395,19 +395,33 @@ for(t in 1:ntemps) {
 	lvii_daph_lm[[t]]$new_fit$N = seq(1, max(daph_tmpb_inv$N,na.rm=T) ) 
 	lvii_daph_lm[[t]]$new_fit$N_pred = lvii_daph_lm[[t]]$new_fit$N* coef(lvii_daph_lm[[t]])[2] + coef(lvii_daph_lm[[t]])[1]
 	#lvii_daph[[t]]$new_fit$N_pred = lvii_daph[[t]]$new_fit$N* coef(lvii_daph[[t]])+1
+	
+	#Make the data frame to store and compare all of the fits
 	lvii_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
-		 			N=lvii_daph_lm[[t]]$new_fit$N,  
-		 			Ndiff= lvii_daph_lm[[t]]$new_fit$N_pred )
-    lvii_daph_pred_lm = rbind(lvii_daph_pred, lvii_daph_tmp)
+		 			N=exp(lvii_daph_lm[[t]]$new_fit$N),  
+		 			Ndiff= exp(lvii_daph_lm[[t]]$new_fit$N_pred),
+		 			ri_lm = coef(lvii_daph_lm[[t]])[1],
+		 			ri_nlm = NA,
+		 			aii_lm = abs(coef(lvii_daph_lm[[t]])[2]),
+		 			aii_nlm = NA  )
+  lvii_daph_pred_lm = rbind(lvii_daph_pred, lvii_daph_tmp)
+
+
 
 	lvii_dia_lm[[t]] = lm(f_lvii,dia_tmpb_inv)#, offset = rep(1,length(dia_tmpb_inv$N))  )
 	lvii_dia_lm[[t]]$new_fit$N = seq(1, max(dia_tmpb_inv$N,na.rm=T) ) 
 	lvii_dia_lm[[t]]$new_fit$N_pred = lvii_dia_lm[[t]]$new_fit$N* coef(lvii_dia_lm[[t]])[2] + coef(lvii_dia_lm[[t]])[1]
 	#lvii_dia[[t]]$new_fit$N_pred = lvii_dia[[t]]$new_fit$N* coef(lvii_dia[[t]]) + 1
+	
+	#Make the data frame to store and compare all of the fits
 	lvii_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
-		 			N=lvii_dia_lm[[t]]$new_fit$N,  
-		 			Ndiff= lvii_dia_lm[[t]]$new_fit$N_pred )
-    lvii_dia_pred_lm = rbind(lvii_dia_pred, lvii_dia_tmp)
+		 			N=exp(lvii_dia_lm[[t]]$new_fit$N),  
+		 			Ndiff= exp(lvii_dia_lm[[t]]$new_fit$N_pred),
+		 			ri_lm = coef(lvii_dia_lm[[t]])[1],
+		 			ri_nlm = NA,
+		 			aii_lm = abs(coef(lvii_dia_lm[[t]])[2]),
+		 			aii_nlm = NA  )
+  lvii_dia_pred_lm = rbind(lvii_dia_pred, lvii_dia_tmp)
 
 	lm1 = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
 
@@ -422,15 +436,25 @@ for(t in 1:ntemps) {
 
 	test1= get_mod_fit( mod_data =daph_tmpb_inv, mod_fit = f_lvii_nls, mod_prms = lvii_prms,
 					prm_start = c(1.1, 0.5 ), mod_x = "N" )
+	#fixed = list(ri = ri)
 	#fixed = list(ri = unname(coef(lm1)[1] ) )
 
+	#If the non-linear model worked then replace lvii_tmp with the the predictions from this
+	#model. 
 	if(!is.null(test1)) { 
 	lvii_daph[[t]] =test1
+	#Make the data frame to store and compare all of the fits
 	lvii_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
 		 			N = lvii_daph[[t]]$new_fit$N,  
-		 			Ndiff = lvii_daph[[t]]$new_fit$N_pred)
-    lvii_daph_pred = rbind(lvii_daph_pred, lvii_daph_tmp)
+		 			Ndiff = lvii_daph[[t]]$new_fit$N_pred,
+					ri_lm = NA,
+		 			ri_nlm = coef(lvii_daph[[t]]$fit_mod)[1],
+		 			aii_lm = NA,
+		 			aii_nlm = abs(coef(lvii_daph[[t]]$fit_mod)[2] )
+		 			) 
+
 	}
+
 
 	lm1 = lm(f_lvii, dia_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
 
@@ -444,16 +468,29 @@ for(t in 1:ntemps) {
 
 	test1 = NULL
 	test1= get_mod_fit( mod_data =dia_tmpb_inv, mod_fit = f_lvii_nls, mod_prms = lvii_prms,
-					prm_start = c(1.1, 0.5 ), mod_x = "N",fixed = list(ri = ri ))
+					prm_start = c(1.1, 0.5 ), mod_x = "N")
+	#fixed = list(ri = ri)
 
+	#If the non-linear model worked then replace lvii_tmp with the the predictions from this
+	#model. 
 	if(!is.null(test1)) { 
 	lvii_dia[[t]] =test1
+	#Make the data frame to store and compare all of the fits
 	lvii_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
 		 			N = lvii_dia[[t]]$new_fit$N,  
-		 			Ndiff = lvii_dia[[t]]$new_fit$N_pred)
-    lvii_dia_pred = rbind(lvii_dia_pred, lvii_dia_tmp)
+		 			Ndiff = lvii_dia[[t]]$new_fit$N_pred,
+					ri_lm = NA,
+		 			ri_nlm = coef(lvii_dia[[t]]$fit_mod)[1] ,
+		 			aii_lm = NA,
+		 			aii_nlm = abs(coef(lvii_dia[[t]]$fit_mod)[2] )
+		 			) 
 	}
 
+
+	#Add the predictions. Default to the linear model, but add the non-linear 
+	#prediction if that failed. 
+  lvii_daph_pred = rbind(lvii_daph_pred, lvii_daph_tmp)
+  lvii_dia_pred = rbind(lvii_dia_pred, lvii_dia_tmp)
 
 	#=============================================================================
 	#Interspecific competition
@@ -511,60 +548,117 @@ for(t in 1:ntemps) {
 	dia_inv_tmp$N_res = log(dia_inv_tmp$N_res)
 
 	#Fix the y intercept based on monoculture models: 
-	y1_daph = max(c(1, coef(lvii_daph_lm[[t]])[1], coef(lvii_daph[[t]]$fit_mod )[1] ),na.rm=T )
-	lvij_daph_lm[[t]] = lm(f_lvij, daph_inv_tmp, offset = rep(y1,length(daph_inv_tmp$N_res))  )
-	#lvij_daph_lm[[t]] = lm(f_lvij, daph_inv_tmp)
+#	y1_daph = max(c(coef(lvii_daph_lm[[t]])[1], coef(lvii_daph[[t]]$fit_mod )[1] ),na.rm=T )
+	y1_daph = coef(lvii_daph_lm[[t]])[1]
+	if(is.na(y1_daph)){y1_daph = 1}
+	
+	print(c(coef(lvii_daph_lm[[t]])[1], coef(lvii_daph[[t]]$fit_mod )[1] )  )
+	lvij_daph_lm[[t]] = lm(f_lvij, daph_inv_tmp, offset = rep(y1_daph,length(daph_inv_tmp$N_res))  )
+	lvij_daph_lm[[t]] = lm(f_lvij, daph_inv_tmp)
 	lvij_daph_lm[[t]]$new_fit$N_res = seq(1, max(daph_inv_tmp$N_res,na.rm=T) ) 
-	lvij_daph_lm[[t]]$new_fit$N_pred = lvij_daph_lm[[t]]$new_fit$N_res* coef(lvij_daph_lm[[t]]) + 1
+	lvij_daph_lm[[t]]$new_fit$N_pred = lvij_daph_lm[[t]]$new_fit$N_res* coef(lvij_daph_lm[[t]]) + 	y1_daph 
+	
+	#Make the data frame to store and compare all of the fits
 	lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
-		 			N_res=lvij_daph_lm[[t]]$new_fit$N_res,  
-		 			Ndiff= lvij_daph_lm[[t]]$new_fit$N_pred )
-    lvij_daph_pred_lm = rbind(lvij_daph_pred, lvij_daph_tmp)
+		 			N_res=exp(lvij_daph_lm[[t]]$new_fit$N_res),  
+		 			Ndiff= exp(lvij_daph_lm[[t]]$new_fit$N_pred),
+		 			ri_lm = 	y1_daph ,
+		 			ri_nlm = NA,
+		 			aij_lm = abs(coef(lvij_daph_lm[[t]])[1]),
+		 			aij_nlm = NA  )
+  lvij_daph_pred_lm = rbind(lvij_daph_pred, lvij_daph_tmp)
 
-	y1_dia = max(c(1, coef(lvii_dia_lm[[t]])[1], coef(lvii_dia[[t]]$fit_mod )[1] ),na.rm=T )	
-	lvij_dia_lm[[t]] = lm(f_lvij,dia_inv_tmp, offset = rep(y1,length(dia_inv_tmp$N_res))  )
+
+
+	#y1_dia = max(c(coef(lvii_dia_lm[[t]])[1], coef(lvii_dia[[t]]$fit_mod )[1] ),na.rm=T )	
+	y1_dia = coef(lvii_daph_lm[[t]])[1]
+	if(is.na(y1_dia)){y1_dia = 1}
+
+	print(c(coef(lvii_dia_lm[[t]])[1], coef(lvii_dia[[t]]$fit_mod )[1] )  )
+	lvij_dia_lm[[t]] = lm(f_lvij,dia_inv_tmp, offset = rep(y1_dia,length(dia_inv_tmp$N_res))  )
 	lvij_dia_lm[[t]]$new_fit$N_res = seq(1, max(dia_inv_tmp$N_res,na.rm=T) ) 
-	lvij_dia_lm[[t]]$new_fit$N_pred = lvij_dia_lm[[t]]$new_fit$N_res* coef(lvij_dia_lm[[t]]) + 1
+	lvij_dia_lm[[t]]$new_fit$N_pred = lvij_dia_lm[[t]]$new_fit$N_res* coef(lvij_dia_lm[[t]]) + y1_dia
+
+	#Make the data frame to store and compare all of the fits
 	lvij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
-		 			N_res=lvij_dia_lm[[t]]$new_fit$N_res,  
-		 			Ndiff= lvij_dia_lm[[t]]$new_fit$N_pred )
-    lvij_dia_pred_lm = rbind(lvij_dia_pred, lvij_dia_tmp)
+		 			N_res=exp(lvij_dia_lm[[t]]$new_fit$N_res),  
+		 			Ndiff= exp(lvij_dia_lm[[t]]$new_fit$N_pred),
+		 			ri_lm = y1_dia ,
+		 			ri_nlm = NA,
+		 			aij_lm = abs(coef(lvij_dia_lm[[t]])[1]),
+		 			aij_nlm = NA  )
+  lvij_dia_pred_lm = rbind(lvij_dia_pred, lvij_dia_tmp)
+
+
+	#Un-transform data:
+	daph_inv_tmp$Ndiff = exp(daph_inv_tmp$Ndiff)
+	daph_inv_tmp$N_res = exp(daph_inv_tmp$N_res)
 
  #Two different ways to fix the intercept: 
-  ri = coef(lvii_daph_lm[[t]])[1]  #<-- tends to produce a lower aii
+  #ri = coef(lvii_daph_lm[[t]])[1]  #<-- tends to produce a lower aii
+  ri = coef(lvii_daph[[t]]$fit_mod )[1] #Match ri from the nonlinear fit
   #ri = max(daph_tmpb_inv$Ndiff,na.rm=T )
+  if(!is.null(ri)){ri = max(daph_tmpb_inv$Ndiff,na.rm=T )}
+
 	lm1 = lm(f_lvii, daph_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
     test1 = NULL
 	test1= get_mod_fit( mod_data =daph_inv_tmp, mod_fit = f_lvij_nls, mod_prms = lvij_prms,
-					prm_start = c(1.1, 0.5 ), mod_x = "N_res", fixed = list(ri = max(daph_tmpb_inv$Ndiff,na.rm=T  )) )
+					prm_start = c(1.1, 0.5 ), mod_x = "N_res", fixed = list(ri = ri )
+				)
 
+	#If the non-linear model worked then replace lvij_tmp with the the predictions from this
+	#model. 
 	if(!is.null(test1)) { 
 	lvij_daph[[t]] =test1
+	#Make the data frame to store and compare all of the fits
 	lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
 		 			N_res = lvij_daph[[t]]$new_fit$N_res,  
-		 			Ndiff = lvij_daph[[t]]$new_fit$N_pred)
-    lvij_daph_pred = rbind(lvij_daph_pred, lvij_daph_tmp)
+		 			Ndiff = lvij_daph[[t]]$new_fit$N_pred,
+					ri_lm = NA,
+		 			ri_nlm = ri,
+		 			aij_lm = NA,
+		 			aij_nlm = abs(coef(lvij_daph[[t]]$fit_mod)[1])
+		 		)
 	}
 
- #Two different ways to fix the intercept: 
-  ri = coef(lvii_dia_lm[[t]])[1]  #<-- tends to produce a lower aii
+	#Un-transform data:
+	dia_inv_tmp$Ndiff = exp(dia_inv_tmp$Ndiff)
+	dia_inv_tmp$N_res = exp(dia_inv_tmp$N_res)
+
+  #Two different ways to fix the intercept: 
+  #ri = coef(lvii_dia_lm[[t]])[1]  #<-- tends to produce a lower aii
+  ri =coef(lvii_dia[[t]]$fit_mod )[1] # Match ri from the nonlinear  fit
   #ri = max(daph_tmpb_inv$Ndiff,na.rm=T )
+	if(is.null(ri)){ri = max(dia_tmpb_inv$Ndiff,na.rm=T )}
 	lm1 = lm(f_lvii, dia_tmpb_inv)#, offset = rep(1,length(daph_tmpb_inv$N))  )
 	test1 = NULL
 	test1= get_mod_fit( mod_data =dia_inv_tmp, mod_fit = f_lvij_nls, mod_prms = lvij_prms,
-					prm_start = c(1.1, 0.5 ), mod_x = "N_res", fixed = list(ri = max(daph_tmpb_inv$Ndiff,na.rm=T  ) ) )
+					prm_start = c(1.1, 0.5 ), mod_x = "N_res", fixed = list(ri = ri ) )
 
+	#If the non-linear model worked then replace lvij_tmp with the the predictions from this
+	#model. 	
 	if(!is.null(test1)) { 
 	lvij_dia[[t]] =test1
+	#Make the data frame to store and compare all of the fits
 	lvij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
 		 			N_res = lvij_dia[[t]]$new_fit$N_res,  
-		 			Ndiff = lvij_dia[[t]]$new_fit$N_pred)
-    lvij_dia_pred = rbind(lvij_dia_pred, lvij_dia_tmp)
+		 			Ndiff = lvij_dia[[t]]$new_fit$N_pred,
+					ri_lm = NA,
+		 			ri_nlm = ri,
+		 			aij_lm = NA,
+		 			aij_nlm = abs(coef(lvij_dia[[t]]$fit_mod)[1])
+		 		)
 	}
 
+	#Add the predictions. Default to the linear model, but add the non-linear 
+	#prediction if that failed. 
+	lvij_daph_pred = rbind(lvij_daph_pred, lvij_daph_tmp)
+  lvij_dia_pred = rbind(lvij_dia_pred, lvij_dia_tmp)
+
+
 	#Output
-	print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
-	print(mean(as.data.frame(subset(dia_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
+	# print(mean(as.data.frame(subset(daph_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
+	# print(mean(as.data.frame(subset(dia_inv_tmp,day_n <=34))$Ndiff,na.rm=T) )
 
 	#Keep building these for plotting: 
 	cl_daph_plot = rbind( cl_daph_plot, daph_tmp )
