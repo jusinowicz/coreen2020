@@ -731,12 +731,23 @@ ggsave("./intrinsicR_time_diaDaph2.pdf", width = 8, height = 10)
 #Pick the appropriate first line: 
 #ggplot(cl_plot, aes(x = day_n, y =N, color = species) ) + #1. 
 #ggplot(cl_plot, aes(x = Adiff, y =N, color = species) ) + #2. 
+
+###Use this to add summaries of aii, aij, and ris to each plot: 
+lvii_sum = lvii_pred %>% dplyr::group_by(temperature,species) %>%
+  dplyr::summarise(ri_lm = round(mean(ri_lm),2),
+  					ri_nlm = round(mean(ri_nlm),2),
+  					aii_lm = round(mean(aii_lm),2),
+  					aii_nlm = round(mean(aii_nlm),2) ) %>%
+  mutate(lab = paste("ri_lm  = ", ri_lm , "\nri_nlm = ",ri_nlm,  
+  										"\naii_nlm = ",aii_lm, "\naii_nlm = ",aii_nlm  ))
+
 ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2. 
   geom_point( )+ 
   geom_line(data= lvii_pred, mapping= aes(x = N, y =Ndiff, color=species) )+
   facet_grid(temperature~species) + #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
   xlab("Zooplankton abundance ")+
   ylab("Growth rate")+  xlim(0,60)+
+  geom_text(data = lvii_sum, aes(label = lab), x = 6.7, y = 1.3)+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 ggsave("./lvii_diaDaph2.pdf", width = 8, height = 10)
 
@@ -746,6 +757,7 @@ ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2.
   facet_grid(temperature~species) + #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
   xlab("Zooplankton abundance ") +
   ylab("Growth rate")+  xlim(0,60)+
+  geom_text( data=lvij_pred, aes( label = "aij",color=species) )
   theme(strip.background = element_rect(colour=NA, fill=NA))
 ggsave("./lvij_diaDaph2.pdf", width = 8, height = 10)
 
