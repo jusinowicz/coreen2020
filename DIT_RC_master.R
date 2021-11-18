@@ -447,9 +447,9 @@ for(t in 1:ntemps) {
 	lvii_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
 		 			N = lvii_daph[[t]]$new_fit$N,  
 		 			Ndiff = lvii_daph[[t]]$new_fit$N_pred,
-					ri_lm = NA,
+					ri_lm = abs(coef(lvii_daph_lm[[t]])[1]),
 		 			ri_nlm = coef(lvii_daph[[t]]$fit_mod)[1],
-		 			aii_lm = NA,
+		 			aii_lm = abs(coef(lvii_daph_lm[[t]])[2]),
 		 			aii_nlm = abs(coef(lvii_daph[[t]]$fit_mod)[2] )
 		 			) 
 
@@ -479,9 +479,9 @@ for(t in 1:ntemps) {
 	lvii_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
 		 			N = lvii_dia[[t]]$new_fit$N,  
 		 			Ndiff = lvii_dia[[t]]$new_fit$N_pred,
-					ri_lm = NA,
+					ri_lm = abs(coef(lvii_daph_lm[[t]])[1]),
 		 			ri_nlm = coef(lvii_dia[[t]]$fit_mod)[1] ,
-		 			aii_lm = NA,
+		 			aii_lm = abs(coef(lvii_daph_lm[[t]])[2]),
 		 			aii_nlm = abs(coef(lvii_dia[[t]]$fit_mod)[2] )
 		 			) 
 	}
@@ -614,9 +614,9 @@ for(t in 1:ntemps) {
 	lvij_daph_tmp = data.frame( species = rspecies[1], temperature = temps[t],
 		 			N_res = lvij_daph[[t]]$new_fit$N_res,  
 		 			Ndiff = lvij_daph[[t]]$new_fit$N_pred,
-					ri_lm = NA,
+					ri_lm = y1_daph,
 		 			ri_nlm = ri,
-		 			aij_lm = NA,
+		 			aij_lm = abs(coef(lvij_daph_lm[[t]])[1]),
 		 			aij_nlm = abs(coef(lvij_daph[[t]]$fit_mod)[1])
 		 		)
 	}
@@ -643,9 +643,9 @@ for(t in 1:ntemps) {
 	lvij_dia_tmp = data.frame( species = rspecies[2], temperature = temps[t],
 		 			N_res = lvij_dia[[t]]$new_fit$N_res,  
 		 			Ndiff = lvij_dia[[t]]$new_fit$N_pred,
-					ri_lm = NA,
+					ri_lm = y1_dia,
 		 			ri_nlm = ri,
-		 			aij_lm = NA,
+		 			aij_lm = abs(coef(lvij_dia_lm[[t]])[1]),
 		 			aij_nlm = abs(coef(lvij_dia[[t]]$fit_mod)[1])
 		 		)
 	}
@@ -739,7 +739,7 @@ lvii_sum = lvii_pred %>% dplyr::group_by(temperature,species) %>%
   					aii_lm = round(mean(aii_lm),2),
   					aii_nlm = round(mean(aii_nlm),2) ) %>%
   mutate(lab = paste("ri_lm  = ", ri_lm , "\nri_nlm = ",ri_nlm,  
-  										"\naii_nlm = ",aii_lm, "\naii_nlm = ",aii_nlm  ))
+  										"\naii_lm = ",aii_lm, "\naii_nlm = ",aii_nlm  ))
 
 ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2. 
   geom_point( )+ 
@@ -747,9 +747,19 @@ ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2.
   facet_grid(temperature~species) + #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
   xlab("Zooplankton abundance ")+
   ylab("Growth rate")+  xlim(0,60)+
-  geom_text(data = lvii_sum, aes(label = lab), x = 6.7, y = 1.3)+
+  geom_text(data = lvii_sum, aes(label = lab), x = 40, y = 4,size = 3)+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 ggsave("./lvii_diaDaph2.pdf", width = 8, height = 10)
+
+
+###Use this to add summaries of aii, aij, and ris to each plot: 
+lvij_sum = lvij_pred %>% dplyr::group_by(temperature,species) %>%
+  dplyr::summarise(ri_lm = round(mean(ri_lm),2),
+  					ri_nlm = round(mean(ri_nlm),2),
+  					aij_lm = round(mean(aij_lm),2),
+  					aij_nlm = round(mean(aij_nlm),2) ) %>%
+  mutate(lab = paste("ri_lm  = ", ri_lm , "\nri_nlm = ",ri_nlm,  
+  										"\naij_lm = ",aij_lm, "\naij_nlm = ",aij_nlm  ))
 
 ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2. 
   geom_point( )+
@@ -757,7 +767,7 @@ ggplot(cl_plot, aes(x = N, y =Ndiff, color = species) ) + #2.
   facet_grid(temperature~species) + #xlim( min(cl_plot$Adiff), max(cl_plot$Adiff))+
   xlab("Zooplankton abundance ") +
   ylab("Growth rate")+  xlim(0,60)+
-  geom_text( data=lvij_pred, aes( label = "aij",color=species) )
+  geom_text(data = lvij_sum, aes(label = lab), x = 40, y = 4,size = 3)+
   theme(strip.background = element_rect(colour=NA, fill=NA))
 ggsave("./lvij_diaDaph2.pdf", width = 8, height = 10)
 
